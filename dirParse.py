@@ -55,20 +55,25 @@ def parseKinFile( kinFile ):
 # Run the above function and store its results in a variable.   
 full_file_paths = get_filepaths( "../../sandbox" )
 
+# get all the files that match the file extension we are looking for
+list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
+# using the list from the kin files, extract the variables we need
+map( parseKinFile, list_of_kin_files )
 #use this in the table
-for found_file in full_file_paths:
+# for found_file in full_file_paths:
 	#search for *.kin0 files
-	kinFileDir_regEx = re.match( r'(.*\/.*kin0)', found_file )
-	#container to store all the relation strings if needed
-	# kin_file_full_relation_list = [];
-	# #list of id's for sorting for unique values before entering into the table
-	# kin_file_fid_value_list = [];
+	# kinFileDir_regEx = re.match( r'(.*\/.*kin0)', found_file )
+	# #container to store all the relation strings if needed
+	# # kin_file_full_relation_list = [];
+	# # #list of id's for sorting for unique values before entering into the table
+	# # kin_file_fid_value_list = [];
 
-	if kinFileDir_regEx:
+	# if kinFileDir_regEx:
 
 		# print kinFileDir_regEx.groups()
 
-		map( parseKinFile, kinFileDir_regEx.groups() )
+		# map( parseKinFile, kinFileDir_regEx.groups() )
+
 		# for kin_file_in_directory in kinFileDir_regEx.groups():
 
 		# 	with open( kin_file_in_directory ) as kin_file:
