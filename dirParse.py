@@ -2,23 +2,32 @@
 import os
 import re
 
+file_paths = []  # List which will store all of the full filepaths.
+
+def joinPaths ( rt, fname ):
+	filepath = os.path.join( rt, fname )
+	file_paths.append( filepath )  # Add it to the list.
+
 def get_filepaths( directory ):
-    """
-    This function will generate the file names in a directory 
-    tree by walking the tree either top-down or bottom-up. For each 
-    directory in the tree rooted at directory top (including top itself), 
-    it yields a 3-tuple (dirpath, dirnames, filenames).
-    """
-    file_paths = []  # List which will store all of the full filepaths.
+	"""
+	This function will generate the file names in a directory 
+	tree by walking the tree either top-down or bottom-up. For each 
+	directory in the tree rooted at directory top (including top itself), 
+	it yields a 3-tuple (dirpath, dirnames, filenames).
+	"""
+	# file_paths = [] # List which will store all of the full filepaths.
 
-    # Walk the tree.
-    for root, directories, files in os.walk( directory ):
-        for filename in files:
-            # Join the two strings in order to form the full filepath.
-            filepath = os.path.join( root, filename )
-            file_paths.append( filepath )  # Add it to the list.
+	# Walk the tree.
+	[ [joinPaths(root, x) for x in files] for root, directories, files in os.walk( directory ) ]
+	# for root, directories, files in os.walk( directory ):
+	# 	[joinPaths(root, x) for x in files]
 
-    return file_paths  # Self-explanatory.
+		# for filename in files:
+		# 	# Join the two strings in order to form the full filepath.
+		# 	filepath = os.path.join( root, filename )
+		# 	file_paths.append( filepath )  # Add it to the list.
+
+	return file_paths  # Self-explanatory.
 
 # these two containers are duplicatedon lines 37 and 39 for scope. At this level, scope is all files for uniqueness
 # at the next level, scope is local to the file being parsed
@@ -30,7 +39,7 @@ kin_file_full_relation_list2 = []; kin_file_fid_value_list2 = [];
 def appendFIDValueList( v ):
 	if ( kin_file_fid_value_list2.count( v ) == 0 ):
 		kin_file_fid_value_list2.append( v )
-
+# ro is the relation string in its original order, rr is with FID1 and FID2 reveresed
 def appendRelationStringList( ro, rr ):
 	if ( kin_file_full_relation_list2.count( ro ) == 0 and kin_file_full_relation_list2.count( rr ) == 0 ):
 		kin_file_full_relation_list2.append( ro )
