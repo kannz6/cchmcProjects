@@ -9,6 +9,7 @@ class dirParse:
 		self.file_paths = []  
 		self.kin_file_full_relation_list = []; 
 		self.kin_file_fid_value_list = [];
+		self.kin_file_relation_dict = {}
 
 	def joinPaths ( self, rt, fname ):
 		filepath = os.path.join( rt, fname )
@@ -34,12 +35,42 @@ class dirParse:
 		if ( self.kin_file_full_relation_list.count( ro ) == 0 and self.kin_file_full_relation_list.count( rr ) == 0 ):
 			self.kin_file_full_relation_list.append( ro )
 
+	def addRelationToDictionary(self, k1, k2, v):
+		if( not self.kin_file_relation_dict.has_key( k1 ) ):
+			self.kin_file_relation_dict.update( { k1 : v } )
+		elif( not self.kin_file_relation_dict.has_key( k2 ) ):
+			self.kin_file_relation_dict.update( { k2 : v } )
+
 	def createRelationStrings( self, variablesList ):
+		recordID_Part1  = ""
+		recordID_Part2 = ""
+		bothIDsFound = True
+		# filter( (lambda x : re.match( r'.*-([0-9]+)-.*', x) ), full_file_paths )
+		# aligned-sorted.1-13996-01.0.bam aligned-sorted.1-13996-02.1.bam 0.0907
+		# aligned-sorted.1-13996-01.0.bam aligned-sorted.1-13996.2.bam 0.1732
+		# aligned-sorted.1-13996-02.1.bam aligned-sorted.1-13996.2.bam 0.1723
+		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[0] ) 
+		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
+		if recordID_regExPart1:
+			recordID_Part1 += recordID_regExPart1.group(1)
+			print "id Part 1: %s"% recordID_Part1
+		else:
+			bothIDsFound = False
+
+		if recordID_regExPart2:
+			recordID_Part2 += recordID_regExPart2.group(1)
+			print "id Part 2: %s"% recordID_Part2
+		else:
+			bothIDsFound = False
+
 		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]
 		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]
 		self.appendFIDValueList( variablesList[0] )
 		self.appendFIDValueList( variablesList[2] )
 		self.appendRelationStringList( relation_str, reverse_relation_str )
+		# only add if the id's have been found so not to throw an error when calling method
+		if ( bothIDsFound ):
+			self.addRelationToDictionary( recordID_Part1, recordID_Part2, relation_str )
 
 	def parseKinFile( self, kinFile ):
 		with open( kinFile ) as kf:
@@ -56,6 +87,12 @@ class dirParse:
 		for r in self.kin_file_full_relation_list:
 			print r
 		print "___________________________\nEnd of Relation List"
+
+	def printRelationDictionary( self ):
+		print "\nRelation Dictionary:\n___________________________"
+		for k in self.kin_file_relation_dict.keys():
+			print "key: %s, value: %s" % (k, self.kin_file_relation_dict.get(k))
+		print "___________________________\nEnd of Relation Dictionary"
 
 	def getRelationList( self ):
 		return self.kin_file_full_relation_list
