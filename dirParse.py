@@ -53,13 +53,13 @@ class dirParse:
 		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
 		if recordID_regExPart1:
 			recordID_Part1 += recordID_regExPart1.group(1)
-			print "id Part 1: %s"% recordID_Part1
+			# print "id Part 1: %s"% recordID_Part1
 		else:
 			bothIDsFound = False
 
 		if recordID_regExPart2:
 			recordID_Part2 += recordID_regExPart2.group(1)
-			print "id Part 2: %s"% recordID_Part2
+			# print "id Part 2: %s"% recordID_Part2
 		else:
 			bothIDsFound = False
 
@@ -90,8 +90,13 @@ class dirParse:
 
 	def printRelationDictionary( self ):
 		print "\nRelation Dictionary:\n___________________________"
-		for k in self.kin_file_relation_dict.keys():
-			print "key: %s, value: %s" % (k, self.kin_file_relation_dict.get(k))
+		# for k in self.kin_file_relation_dict.keys():
+		# 	print "key: %s, value: %s" % (k, self.kin_file_relation_dict.get(k))
+		dictList = self.kin_file_relation_dict.items()
+		dictList.sort()
+		for i in dictList:
+			print "key: %s, value %s"% (i[0], i[1])
+
 		print "___________________________\nEnd of Relation Dictionary"
 
 	def getRelationList( self ):
