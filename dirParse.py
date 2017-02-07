@@ -14,6 +14,8 @@ class dirParse:
 		self.blindIdFilePathDict = {}
 		self.allChildBlindIds = [];
 		self.trioValidationDict = {}
+		self.parentsRelatedCoefficientDict = {}
+		self.childRelationCoefficientsDict = {}
 
 
 	def joinPaths ( self, rt, fname ):
@@ -160,9 +162,17 @@ class dirParse:
 			for exomeFilePath in exomeFileContent:
 				# print exomeFilePath
 				blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath );
+				# blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath[3:-1] );#use this for parsing input_#.dat file
 				if blindIDPath_regEx:
 					# print "Blind ID: %s"% blindIDPath_regEx.group(1)
-					self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath } )
+					if ( self.blindIdFilePathDict.has_key( blindIDPath_regEx.group(1) ) ):
+						val = self.blindIdFilePathDict.get( blindIDPath_regEx.group(1) )
+						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath } )
+						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
+
+					else:
+						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath } )
+						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
 	
 	def validateTrio( self ):
 		for r in self.getRelationDictionary():
@@ -175,28 +185,32 @@ class dirParse:
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 1st-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "yes" } )
+					self.trioValidationDict.update( { idVals[1] : "yes" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "yes" } )
+					self.trioValidationDict.update( { idVals[4] : "yes" } ); self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) < 0.177 and float( relVals[2] ) >= 0.0884 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 2nd-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "no" } )
+					self.trioValidationDict.update( { idVals[1] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "no" } )
+					self.trioValidationDict.update( { idVals[4] : "no" } );self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) < 0.0884 and float( relVals[2] ) >= 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 3rd-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "no" } )
+					self.trioValidationDict.update( { idVals[1] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "no" } )
+					self.trioValidationDict.update( { idVals[4] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float( relVals[2] ) < 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 4th-degree Relation" #+ r[1]
+				if ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
+																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ):
+					if ( not self.parentsRelatedCoefficientDict.has_key( idVals[1][:-3] ) ):
+						self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
 
 			if ( float(relVals[2] ) > 0.0442 and ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
 																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ) ):
@@ -204,7 +218,8 @@ class dirParse:
 
 	def printBlindIdRelationData( self ):
 		for blindID in self.allChildBlindIds:
-			print "Child-id: %s, Child file: %s, Mom-id: %s, Mom file: %s, Dad-id: %s, Dad-file %s, Trio Validated: %s"%(blindID, self.blindIdFilePathDict.get(blindID), 
-																							blindID + "-01", self.blindIdFilePathDict.get(blindID+"-01"),
-																							blindID + "-02", self.blindIdFilePathDict.get(blindID+"-02"), 
-																							self.trioValidationDict.get( blindID ))
+			print """Child-id: %s\nChild file: %s\nMom-id: %s | Mom relation value: %s\nMom file: %s\nDad-id: %s | Dad relation value: %s\nDad-file %s \nTrio Validated: %s | Parent-Relation Coefficient: %s\n_____________________________________________________________________________"""%(blindID, self.blindIdFilePathDict.get(blindID), 
+			blindID + "-01", self.childRelationCoefficientsDict.get(blindID + "-01"), self.blindIdFilePathDict.get(blindID+"-01"),
+			blindID + "-02", self.childRelationCoefficientsDict.get(blindID + "-02"), self.blindIdFilePathDict.get(blindID+"-02"), 
+			self.trioValidationDict.get( blindID ),
+			self.parentsRelatedCoefficientDict.get( blindID ))
