@@ -13,6 +13,7 @@ class dirParse:
 		#data structures for creating the spreadsheet
 		self.blindIdFilePathDict = {}
 		self.allChildBlindIds = [];
+		self.trioValidationDict = {}
 
 
 	def joinPaths ( self, rt, fname ):
@@ -67,9 +68,12 @@ class dirParse:
 
 		if recordID_regExPart1:
 			recordID_Part1 += recordID_regExPart1.group(1);	bothIDsFound_3_4 = False
+						#append child id's only #2-7-17
+			self.appendChildFIDValueList( recordID_regExPart1.group(1) )
 			# print "id Part 1: %s"% recordID_Part1
 		elif recordID_regExPart3:
 			recordID_Part3 += recordID_regExPart3.group(1);	bothIDsFound_1_2 = False
+			self.appendChildFIDValueList( recordID_regExPart3.group(1) )
 		else:
 			bothIDsFound_1_2 = False; bothIDsFound_3_4 = False
 
@@ -85,9 +89,6 @@ class dirParse:
 		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]
 		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]
 		self.appendFIDValueList( variablesList[0] ); self.appendFIDValueList( variablesList[2] )
-
-		#append child id's only #2-7-17
-		self.appendChildFIDValueList( variablesList[0] )
 
 		self.appendRelationStringList( relation_str, reverse_relation_str )
 		# only add if the id's have been found so not to throw an error when calling method
@@ -162,9 +163,48 @@ class dirParse:
 				if blindIDPath_regEx:
 					# print "Blind ID: %s"% blindIDPath_regEx.group(1)
 					self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath } )
+	
+	def validateTrio( self ):
+		for r in self.getRelationDictionary():
+			idVals = r[0].split() #r[0] contains the FID's/key in the dictionary
+			relVals = r[1].split() #r[1] contains the relation/value in the dictionary
+			print "_______________________________________"
+			if ( float(relVals[2] ) > 0.354 ):
+				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: Duplicate/MZ Twin Relation" #+ r[1]
+			elif ( float(relVals[2] ) <= 0.354 and float( relVals[2] ) >= 0.177 ):
+				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 1st-degree Relation" #+ r[1]
+				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
+					self.trioValidationDict.update( { idVals[1] : "yes" } )
+				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
+					self.trioValidationDict.update( { idVals[4] : "yes" } )
+			elif ( float(relVals[2] ) < 0.177 and float( relVals[2] ) >= 0.0884 ):
+				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 2nd-degree Relation" #+ r[1]
+				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
+					self.trioValidationDict.update( { idVals[1] : "no" } )
+				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
+					self.trioValidationDict.update( { idVals[4] : "no" } )
+			elif ( float(relVals[2] ) < 0.0884 and float( relVals[2] ) >= 0.0442 ):
+				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 3rd-degree Relation" #+ r[1]
+				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
+					self.trioValidationDict.update( { idVals[1] : "no" } )
+				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
+					self.trioValidationDict.update( { idVals[4] : "no" } )
+			elif ( float( relVals[2] ) < 0.0442 ):
+				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 4th-degree Relation" #+ r[1]
+
+			if ( float(relVals[2] ) > 0.0442 and ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
+																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ) ):
+				self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
 
 	def printBlindIdRelationData( self ):
 		for blindID in self.allChildBlindIds:
-			print "Child-id: %s, Child file: %s, Mom-id: %s, Mom file: %s, Dad-id: %s, Dad-file %s"%(blindID, self.blindIdFilePathDict.get(blindID), 
+			print "Child-id: %s, Child file: %s, Mom-id: %s, Mom file: %s, Dad-id: %s, Dad-file %s, Trio Validated: %s"%(blindID, self.blindIdFilePathDict.get(blindID), 
 																							blindID + "-01", self.blindIdFilePathDict.get(blindID+"-01"),
-																							blindID + "-02", self.blindIdFilePathDict.get(blindID+"-02"))
+																							blindID + "-02", self.blindIdFilePathDict.get(blindID+"-02"), 
+																							self.trioValidationDict.get( blindID ))
