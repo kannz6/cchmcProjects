@@ -193,10 +193,14 @@ class dirParse:
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 1st-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "yes" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[1] ) ):
+						self.trioValidationDict.update( { idVals[1] : "yes" } )
+					self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "yes" } ); self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[4] : "yes" } )
+					self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) < 0.177 and float( relVals[2] ) >= 0.0884 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 2nd-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
