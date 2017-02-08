@@ -159,8 +159,8 @@ class dirParse:
 		# print "input files: %s"% list_of_input_files
 		map( self.parseExomeFilePaths, list_of_input_files )
 
-	def parseExomeFilePaths( self, file ):
-		with open( file, "r" ) as exomeFileReaderO:
+	def parseExomeFilePaths( self, exomeFile ):
+		with open( exomeFile, "r" ) as exomeFileReaderO:
 			exomeFileContent = exomeFileReaderO.readlines()
 			exomeFileReaderO.close()
 			exomeFileContent = [line.strip() for line in exomeFileContent] 
