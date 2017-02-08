@@ -83,8 +83,10 @@ class dirParse:
 		if recordID_regExPart2:
 			recordID_Part2 += recordID_regExPart2.group(1);	bothIDsFound_3_4 = False
 			# print "id Part 2: %s"% recordID_Part2
+			self.appendChildFIDValueList( recordID_regExPart2.group(1) )
 		elif recordID_regExPart4:
 			recordID_Part4 += recordID_regExPart4.group(1);	bothIDsFound_1_2 = False
+			self.appendChildFIDValueList( recordID_regExPart4.group(1) )
 		else:
 			bothIDsFound_1_2 = False; bothIDsFound_3_4 = False
 
@@ -153,6 +155,10 @@ class dirParse:
 		# using the list from the kin files, extract the variables we need
 		map( self.parseKinFile, list_of_kin_files )
 
+		list_of_input_files = filter( (lambda x : re.match( r'(.*\/.*dat)', x) ), full_file_paths )
+		# print "input files: %s"% list_of_input_files
+		map( self.parseExomeFilePaths, list_of_input_files )
+
 	def parseExomeFilePaths( self, file ):
 		with open( file, "r" ) as exomeFileReaderO:
 			exomeFileContent = exomeFileReaderO.readlines()
@@ -160,19 +166,21 @@ class dirParse:
 			exomeFileContent = [line.strip() for line in exomeFileContent] 
 			
 			for exomeFilePath in exomeFileContent:
+				if (not exomeFilePath.startswith("aS")):#uncomment when using input_#.dat files
+					continue
 				# print exomeFilePath
-				blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath );
-				# blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath[3:-1] );#use this for parsing input_#.dat file
+				# blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath );
+				blindIDPath_regEx = re.search( r'.*(1-[0-9]+-[0-9]+|1-[0-9]+).*', exomeFilePath[3:-1] );#use this for parsing input_#.dat file
 				if blindIDPath_regEx:
 					# print "Blind ID: %s"% blindIDPath_regEx.group(1)
 					if ( self.blindIdFilePathDict.has_key( blindIDPath_regEx.group(1) ) ):
 						val = self.blindIdFilePathDict.get( blindIDPath_regEx.group(1) )
-						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath } )
-						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
+						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath } )
+						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : val + "," + exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
 
 					else:
-						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath } )
-						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
+						# self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath } )
+						self.blindIdFilePathDict.update( { blindIDPath_regEx.group(1) : exomeFilePath[3:-1] } )#use this for parsing input_#.dat file
 	
 	def validateTrio( self ):
 		for r in self.getRelationDictionary():
@@ -215,6 +223,7 @@ class dirParse:
 			if ( float(relVals[2] ) > 0.0442 and ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
 																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ) ):
 				self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
+				self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
 
 	def printBlindIdRelationData( self ):
 		for blindID in self.allChildBlindIds:
@@ -223,3 +232,14 @@ class dirParse:
 			blindID + "-02", self.childRelationCoefficientsDict.get(blindID + "-02"), self.blindIdFilePathDict.get(blindID+"-02"), 
 			self.trioValidationDict.get( blindID ),
 			self.parentsRelatedCoefficientDict.get( blindID ))
+
+	def getSpreadSheetFortmatedBlindIdRelationData( self ):
+		spreadSheetString = "sep=;\nChild_id;Child_file;Mom_id;Mom_relation_value;Mom_file;Dad_id;Dad_relation_value;Dad_file;Trio_Validated;Parent_Relation_Coefficient;\n"
+		for blindID in self.allChildBlindIds:
+			# global spreadSheetString
+			spreadSheetString += blindID + ";" + str( self.blindIdFilePathDict.get( blindID ) ) + ";"
+			spreadSheetString += blindID + "-01" + ";" + str( self.childRelationCoefficientsDict.get(blindID + "-01") ) + ";" + str( self.blindIdFilePathDict.get(blindID+"-01") ) + ";"
+			spreadSheetString += blindID + "-02" + ";" + str( self.childRelationCoefficientsDict.get(blindID + "-02") ) + ";" + str( self.blindIdFilePathDict.get(blindID+"-02") ) + ";"
+			spreadSheetString += str( self.trioValidationDict.get( blindID ) ) + ";" + str( self.parentsRelatedCoefficientDict.get( blindID ) ) + ";;;;;\n"
+
+		return spreadSheetString
