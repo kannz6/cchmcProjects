@@ -12,7 +12,7 @@ tester.parseDirectory()
 # print "\n"
 # "projects/pcgc/prod/data/expedat/public/Other/exome/fastq/"
 # tester.parseExomeFilePaths( "../../b2bscripts/TrioCheck3/parseFiles/test2.txt" )
-tester.parseExomeFilePaths( "inputFiles/input_0.dat" )
+# tester.parseExomeFilePaths()
 tester.validateTrio()
 print "\n"
 # tester.printBlindIdRelationData()
