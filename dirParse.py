@@ -229,7 +229,7 @@ class dirParse:
 			elif ( float( relVals[2] ) < 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 4th-degree Relation" #+ r[1]
 				if ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) ) 
-																			or ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
+																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
 					if ( not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
 						self.parentsRelatedCoefficientDict.update( { idVals[1][0:7] : relVals[2] } )
 
