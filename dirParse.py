@@ -45,6 +45,7 @@ class dirParse:
 
 	# ro is the relation string in its original order, rr is with FID1 and FID2 reveresed
 	def appendRelationStringList( self, ro, rr ):
+		# print "ro: %s\nrr: %s"%(ro,rr)
 		if ( self.kin_file_full_relation_list.count( ro ) == 0 and self.kin_file_full_relation_list.count( rr ) == 0 ):
 			self.kin_file_full_relation_list.append( ro )
 
@@ -66,7 +67,8 @@ class dirParse:
 		bothIDsFound_1_2 = True; bothIDsFound_3_4 = True
 		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[0] );
 		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
-		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] ) 
+		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )
+
 
 		if recordID_regExPart1:
 			recordID_Part1 += recordID_regExPart1.group(1);	bothIDsFound_3_4 = False
@@ -94,6 +96,7 @@ class dirParse:
 		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]
 		self.appendFIDValueList( variablesList[0] ); self.appendFIDValueList( variablesList[2] )
 
+		# print "Relation Strings: %s\n%s"% (relation_str, reverse_relation_str)
 		self.appendRelationStringList( relation_str, reverse_relation_str )
 		# only add if the id's have been found so not to throw an error when calling method
 		# if ( bothIDsFound ):
@@ -102,6 +105,8 @@ class dirParse:
 			self.addRelationToDictionary( recordID_Part1, recordID_Part2, relation_str )
 		elif ( bothIDsFound_3_4 ):
 			self.addRelationToDictionary( recordID_Part3, recordID_Part4, relation_str )
+		# else:
+		# 	print "Both ids not found!"
 
 	def parseKinFile( self, kinFile ):
 		with open( kinFile ) as kf:
@@ -110,7 +115,7 @@ class dirParse:
 				kinFileVariables = line.split()
 				if (kinFileVariables[0] == 'FID1'):
 					continue
-
+				# print "******parseKinFile:\n%s"%kinFileVariables
 				self.createRelationStrings( kinFileVariables )
 
 	def printRelationList( self ):
@@ -124,7 +129,7 @@ class dirParse:
 		# for k in self.kin_file_relation_dict.keys():
 		# 	print "key: %s, value: %s" % (k, self.kin_file_relation_dict.get(k))
 		dictList = self.kin_file_relation_dict.items()
-		dictList.sort()
+		# dictList.sort()
 		for i in dictList:
 			print "key: %s, value %s"% (i[0], i[1])
 
@@ -132,7 +137,8 @@ class dirParse:
 
 	def getRelationDictionary( self ):
 		dictList = self.kin_file_relation_dict.items()
-		dictList.sort()
+		# print "Dict List: %s"% dictList
+		# dictList.sort()
 		return dictList
 
 	def getRelationList( self ):
@@ -151,10 +157,13 @@ class dirParse:
 		# Run the above function and store its results in a variable.   
 		full_file_paths = self.get_filepaths( self.dir )
 		# get all the files that match the file extension we are looking for
-		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
+		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
+		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )
+		# print list_of_kin_files
 		# using the list from the kin files, extract the variables we need
 		map( self.parseKinFile, list_of_kin_files )
 
+		# uncomment for input files
 		list_of_input_files = filter( (lambda x : re.match( r'(.*\/.*dat)', x) ), full_file_paths )
 		# print "input files: %s"% list_of_input_files
 		map( self.parseExomeFilePaths, list_of_input_files )
@@ -219,13 +228,13 @@ class dirParse:
 					self.trioValidationDict.update( { idVals[4] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float( relVals[2] ) < 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 4th-degree Relation" #+ r[1]
-				if ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
-																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ):
-					if ( not self.parentsRelatedCoefficientDict.has_key( idVals[1][:-3] ) ):
-						self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
+				if ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) ) 
+																			or ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
+					if ( not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
+						self.parentsRelatedCoefficientDict.update( { idVals[1][0:7] : relVals[2] } )
 
-			if ( float(relVals[2] ) > 0.0442 and ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) 
-																			and ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) ) ):
+			if ( float(relVals[2] ) > 0.0442 and ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) )
+																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
 				self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
 				self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
 
