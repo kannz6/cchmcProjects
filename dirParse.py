@@ -72,7 +72,7 @@ class dirParse:
 
 		if recordID_regExPart1:
 			recordID_Part1 += recordID_regExPart1.group(1);	bothIDsFound_3_4 = False
-						#append child id's only #2-7-17
+			#append child id's only #2-7-17
 			self.appendChildFIDValueList( recordID_regExPart1.group(1) )
 			# print "id Part 1: %s"% recordID_Part1
 		elif recordID_regExPart3:
@@ -129,7 +129,7 @@ class dirParse:
 		# for k in self.kin_file_relation_dict.keys():
 		# 	print "key: %s, value: %s" % (k, self.kin_file_relation_dict.get(k))
 		dictList = self.kin_file_relation_dict.items()
-		# dictList.sort()
+		dictList.sort()
 		for i in dictList:
 			print "key: %s, value %s"% (i[0], i[1])
 
@@ -138,7 +138,7 @@ class dirParse:
 	def getRelationDictionary( self ):
 		dictList = self.kin_file_relation_dict.items()
 		# print "Dict List: %s"% dictList
-		# dictList.sort()
+		dictList.sort()
 		return dictList
 
 	def getRelationList( self ):
@@ -153,6 +153,15 @@ class dirParse:
 	def getFIDValues( self ):
 		return self.kin_file_fid_value_list
 
+	def setVCFFile( self , fileName ):
+		for blinded_id in self.allChildBlindIds:
+			if( not self.blindIdFilePathDict.has_key( blinded_id ) ):
+				self.blindIdFilePathDict.update( { blinded_id : fileName } )
+				self.blindIdFilePathDict.update( { blinded_id + "-01" : fileName } )
+				self.blindIdFilePathDict.update( { blinded_id + "-02" : fileName } )
+			else:
+				print "setVCFFile\n%s-->%s"%(blinded_id, self.blindIdFilePathDict.get(blinded_id))
+
 	def parseDirectory( self ):
 		# Run the above function and store its results in a variable.   
 		full_file_paths = self.get_filepaths( self.dir )
@@ -164,9 +173,11 @@ class dirParse:
 		map( self.parseKinFile, list_of_kin_files )
 
 		# uncomment for input files
-		list_of_input_files = filter( (lambda x : re.match( r'(.*\/.*dat)', x) ), full_file_paths )
+		list_of_input_files = filter( (lambda x : re.match( r'(.*\/input_[0-9]+.dat)', x) ), full_file_paths )
 		# print "input files: %s"% list_of_input_files
 		map( self.parseExomeFilePaths, list_of_input_files )
+
+		self.setVCFFile( "/projects/pcgc/prod/data/expedat/yale_vcf/exome_calls.vcf.gz" )
 
 	def parseExomeFilePaths( self, exomeFile ):
 		with open( exomeFile, "r" ) as exomeFileReaderO:
@@ -204,38 +215,54 @@ class dirParse:
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
 					if( not self.trioValidationDict.has_key( idVals[1] ) ):
 						self.trioValidationDict.update( { idVals[1] : "yes" } )
-					self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+					if( not self.childRelationCoefficientsDict.has_key( idVals[4] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
 					if( not self.trioValidationDict.has_key( idVals[4] ) ):
 						self.trioValidationDict.update( { idVals[4] : "yes" } )
-					self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
+					if( not self.childRelationCoefficientsDict.has_key( idVals[1] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) < 0.177 and float( relVals[2] ) >= 0.0884 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 2nd-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[1] : "no" } ); 
+					if( not self.childRelationCoefficientsDict.has_key( idVals[4] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "no" } );self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[4] : "no" } );
+					if( not self.childRelationCoefficientsDict.has_key( idVals[1] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) < 0.0884 and float( relVals[2] ) >= 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 3rd-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
-					self.trioValidationDict.update( { idVals[1] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[1] ) ):
+						self.trioValidationDict.update( { idVals[1] : "no" } ); 
+					
+					if( not self.childRelationCoefficientsDict.has_key( idVals[4] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
 				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
 					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
-					self.trioValidationDict.update( { idVals[4] : "no" } ); self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[4] : "no" } ); 
+
+					if( not self.childRelationCoefficientsDict.has_key( idVals[1] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float( relVals[2] ) < 0.0442 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 4th-degree Relation" #+ r[1]
 				if ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) ) 
 																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
-					if ( not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
+					if ( ( self.allChildBlindIds.count( idVals[1][0:7] ) == 1 ) and not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
 						self.parentsRelatedCoefficientDict.update( { idVals[1][0:7] : relVals[2] } )
 
 			if ( float(relVals[2] ) > 0.0442 and ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) )
 																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
-				self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
+				# self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
 				self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
 
 	def printBlindIdRelationData( self ):
