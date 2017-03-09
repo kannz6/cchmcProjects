@@ -65,9 +65,12 @@ class dirParse:
 	def createRelationStrings( self, variablesList ):
 		recordID_Part1 = "" ; recordID_Part2 = ""; recordID_Part3 = "" ; recordID_Part4 = ""
 		bothIDsFound_1_2 = True; bothIDsFound_3_4 = True
-		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[0] );
+		# recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[0] );		
+		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[1] );
 		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
-		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )
+		# recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); 
+		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[1] ); 
+		recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )
 
 
 		if recordID_regExPart1:
@@ -92,8 +95,10 @@ class dirParse:
 		else:
 			bothIDsFound_1_2 = False; bothIDsFound_3_4 = False
 
-		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]
-		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]
+		# relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]
+		# reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]
+		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[8]
+		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[8]
 		self.appendFIDValueList( variablesList[0] ); self.appendFIDValueList( variablesList[2] )
 
 		# print "Relation Strings: %s\n%s"% (relation_str, reverse_relation_str)
@@ -167,7 +172,8 @@ class dirParse:
 		full_file_paths = self.get_filepaths( self.dir )
 		# get all the files that match the file extension we are looking for
 		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
-		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )
+		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )
+		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin$)', x) ), full_file_paths )
 		# print list_of_kin_files
 		# using the list from the kin files, extract the variables we need
 		map( self.parseKinFile, list_of_kin_files )
@@ -206,6 +212,8 @@ class dirParse:
 		for r in self.getRelationDictionary():
 			idVals = r[0].split() #r[0] contains the FID's/key in the dictionary
 			relVals = r[1].split() #r[1] contains the relation/value in the dictionary
+			# print idVals
+			# print relVals
 			print "_______________________________________"
 			if ( float(relVals[2] ) > 0.354 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: Duplicate/MZ Twin Relation" #+ r[1]
