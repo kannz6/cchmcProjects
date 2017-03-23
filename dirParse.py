@@ -267,6 +267,18 @@ class dirParse:
 																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
 					if ( ( self.allChildBlindIds.count( idVals[1][0:7] ) == 1 ) and not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
 						self.parentsRelatedCoefficientDict.update( { idVals[1][0:7] : relVals[2] } )
+				elif ( ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ) ):
+					if( not self.trioValidationDict.has_key( idVals[1] ) ):
+						self.trioValidationDict.update( { idVals[1] : "no" } );
+
+					if( not self.childRelationCoefficientsDict.has_key( idVals[4] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+				elif ( ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ) ):
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[4] : "no" } );
+
+					if( not self.childRelationCoefficientsDict.has_key( idVals[1] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 
 			if ( float(relVals[2] ) > 0.0442 and ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) )
 																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
