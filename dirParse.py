@@ -282,8 +282,8 @@ class dirParse:
 
 			if ( float(relVals[2] ) > 0.0442 and ( ( ( idVals[1].endswith('-01') or idVals[1].endswith('-02') ) and ( idVals[1][0:7] == idVals[4][0:7] ) )
 																			and ( ( idVals[4].endswith('-01') or idVals[4].endswith('-02') ) and ( idVals[4][0:7] == idVals[1][0:7] ) ) ) ):
-				# self.trioValidationDict.update( { idVals[1][:-3] : "no" } )
-				self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
+				if ( ( self.allChildBlindIds.count( idVals[1][0:7] ) == 1 ) and not self.parentsRelatedCoefficientDict.has_key( idVals[1][0:7] ) ):
+					self.parentsRelatedCoefficientDict.update( { idVals[1][:-3] : relVals[2] } )
 
 	def printBlindIdRelationData( self ):
 		for blindID in self.allChildBlindIds:
