@@ -69,7 +69,7 @@ class dirParse:
 		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[1] );
 		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
 		# recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); #king.kin0 format
-		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[1] );#king.kin format 
+		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[1] );#king.kin and updated fam file format 
 		recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )
 
 
@@ -97,10 +97,10 @@ class dirParse:
 
 		# relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]#king.kin0 format
 		# reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]#king.kin0 format
-		relation_str = variablesList[1] + " " + variablesList[2] + " " + variablesList[7]#king.kin0 updated fam file format
-		reverse_relation_str = variablesList[2] + " " + variablesList[1] + " " + variablesList[7]#king.kin0 updated fam file format
-		# relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[8]#king.kin format
-		# reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[8]#king.kin format
+		# relation_str = variablesList[1] + " " + variablesList[2] + " " + variablesList[7]#king.kin0 updated fam file format
+		# reverse_relation_str = variablesList[2] + " " + variablesList[1] + " " + variablesList[7]#king.kin0 updated fam file format
+		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[8]#king.kin format
+		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[8]#king.kin format
 		self.appendFIDValueList( variablesList[0] ); self.appendFIDValueList( variablesList[2] )
 
 		# print "Relation Strings: %s\n%s"% (relation_str, reverse_relation_str)
@@ -174,8 +174,8 @@ class dirParse:
 		full_file_paths = self.get_filepaths( self.dir )
 		# get all the files that match the file extension we are looking for
 		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
-		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )#king.kin0 format
-		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin$)', x) ), full_file_paths )#king.kin format
+		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )#king.kin0 format
+		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin$)', x) ), full_file_paths )#king.kin format
 		# print list_of_kin_files
 		# using the list from the kin files, extract the variables we need
 		map( self.parseKinFile, list_of_kin_files )
