@@ -69,8 +69,9 @@ class dirParse:
 		recordID_regExPart1 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*).*', variablesList[1] );
 		recordID_regExPart2 = re.search( r'.*\.([0-9]+-[0-9]+?-[0-9]*|[0-9]+-[0-9]+)\..*', variablesList[2] ) 
 		# recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[0] ); #king.kin0 format
-		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[1] );#king.kin and updated fam file format 
-		recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )
+		recordID_regExPart3 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[1] );#king.kin anf king.kin0 updated fam file format 
+		# recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[3] )#king.kin0 and updated fam file format
+		recordID_regExPart4 = re.search( r'([A-Z]+-[0-9]+|1-[0-9]+-[0-9]+|1-[0-9]+)', variablesList[2] )#king.kin and updated fam file format
 
 
 		if recordID_regExPart1:
@@ -97,11 +98,15 @@ class dirParse:
 
 		# relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[7]#king.kin0 format
 		# reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[7]#king.kin0 format
-		# relation_str = variablesList[1] + " " + variablesList[2] + " " + variablesList[7]#king.kin0 updated fam file format
-		# reverse_relation_str = variablesList[2] + " " + variablesList[1] + " " + variablesList[7]#king.kin0 updated fam file format
-		relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[8]#king.kin format
-		reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[8]#king.kin format
-		self.appendFIDValueList( variablesList[0] ); self.appendFIDValueList( variablesList[2] )
+		# relation_str = variablesList[1] + " " + variablesList[3] + " " + variablesList[7]#king.kin0 updated fam file format
+		# reverse_relation_str = variablesList[3] + " " + variablesList[1] + " " + variablesList[7]#king.kin0 updated fam file format
+		# relation_str = variablesList[0] + " " + variablesList[2] + " " + variablesList[8]#king.kin format
+		# reverse_relation_str = variablesList[2] + " " + variablesList[0] + " " + variablesList[8]#king.kin format
+		relation_str = variablesList[1] + " " + variablesList[2] + " " + variablesList[8]#king.kin format
+		reverse_relation_str = variablesList[2] + " " + variablesList[1] + " " + variablesList[8]#king.kin format
+		
+		self.appendFIDValueList( variablesList[1] ); self.appendFIDValueList( variablesList[2] )#king.kin format append fidvalue
+		# self.appendFIDValueList( variablesList[1] ); self.appendFIDValueList( variablesList[3] )#king.kin0 updated fam file format
 
 		# print "Relation Strings: %s\n%s"% (relation_str, reverse_relation_str)
 		self.appendRelationStringList( relation_str, reverse_relation_str )
@@ -120,7 +125,8 @@ class dirParse:
 			for line in kf:
 			#find relevant data in file
 				kinFileVariables = line.split()
-				if (kinFileVariables[0] == 'FID1'):
+				if (kinFileVariables[0] == 'FID1' or kinFileVariables[0] == 'FID'):#kin0 and kin format
+				# if (kinFileVariables[0] == 'FID'):#kin format
 					continue
 				# print "******parseKinFile:\n%s"%kinFileVariables
 				self.createRelationStrings( kinFileVariables )
@@ -214,8 +220,8 @@ class dirParse:
 		for r in self.getRelationDictionary():
 			idVals = r[0].split() #r[0] contains the FID's/key in the dictionary
 			relVals = r[1].split() #r[1] contains the relation/value in the dictionary
-			# print idVals
-			# print relVals
+			# print "idvals: %s"% idVals
+			# print "relvals: %s"% relVals
 			print "_______________________________________"
 			if ( float(relVals[2] ) > 0.354 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: Duplicate/MZ Twin Relation" #+ r[1]
