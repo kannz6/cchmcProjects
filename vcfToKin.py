@@ -58,11 +58,11 @@ class vcfToKin0:
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("plinkScriptFilesUsed.txt", "w+")
-
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchPlinkScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			vcfFile_RegEx = re.search( r'.*diff-filtered-(batch_([0-9]+))\.vcf\.gz', vcfFile );
+			vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				plinkFileName = "batchPlink_"+ vcfFile_RegEx.group(2) + ".sh"
@@ -120,13 +120,13 @@ class vcfToKin0:
 
 		directoryFileNames = self.getFileNames( directory )
 		# get all the files that match the file extension we are looking for
-		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("diffScriptFilesUsed.txt", "w+")
-
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchDiffScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			vcfFile_RegEx = re.search( r'.*filtered-(batch_([0-9]+))\.vcf\.gz', vcfFile );
+			vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				diffFileName = "batchDiff_"+ vcfFile_RegEx.group(2) + ".sh"
@@ -137,14 +137,14 @@ class vcfToKin0:
 					originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(vcfFile_RegEx.group(1))
 					updatedIdFile = "{0}/{0}_updated_ids.txt".format(vcfFile_RegEx.group(1))
 					diffTxtFileName = "{0}/diff_result_{0}.txt" .format(vcfFile_RegEx.group(1))
-					batchFileWriter.write("bcftools query -l {0} > {1}\n\n".format(vcfFile,originalIdFile))
+					batchFileWriter.write("bcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(1),vcfFile,originalIdFile))
 					command1 = "awk '{print $2}'"
-					command2 = "awk '{if($0 ~ " "){print $2} }'"
+					command2 = "awk '{if($0 ~ \" \"){print $2} }'"
 					batchFileWriter.write("{2} {0}_kin/{0}_plink.fam > {1}\n\n".format(vcfFile_RegEx.group(1),updatedIdFile, command1))
 					batchFileWriter.write("diff {0} {1} | {3} > {2}\n\n".format(originalIdFile,updatedIdFile,diffTxtFileName, command2))
 					diffAndFilteredVcfFile = "{0}/diff-{1}".format(vcfFile_RegEx.group(1),vcfFile)
 					command3 = "bcftools view -m2 -M2 -v snps -S ^"
-					batchFileWriter.write("{3}{0} {1} > {2}\n".format(diffTxtFileName, vcfFile, diffAndFilteredVcfFile,command3))
+					batchFileWriter.write("{3}{0} {4}/{1} > {2}\n".format(diffTxtFileName, vcfFile, diffAndFilteredVcfFile,command3,vcfFile_RegEx.group(1)))
 					batchFileWriter.write("\n\n")
 					batchFileWriter.close()
 
