@@ -111,8 +111,6 @@ class dirParse:
 		# print "Relation Strings: %s\n%s"% (relation_str, reverse_relation_str)
 		self.appendRelationStringList( relation_str, reverse_relation_str )
 		# only add if the id's have been found so not to throw an error when calling method
-		# if ( bothIDsFound ):
-		# 	self.addRelationToDictionary( recordID_Part1, recordID_Part2, relation_str )
 		if ( bothIDsFound_1_2 ):
 			self.addRelationToDictionary( recordID_Part1, recordID_Part2, relation_str )
 		elif ( bothIDsFound_3_4 ):
@@ -191,7 +189,8 @@ class dirParse:
 		# print "input files: %s"% list_of_input_files
 		map( self.parseExomeFilePaths, list_of_input_files )
 
-		self.setVCFFile( "/projects/pcgc/prod/data/expedat/yale_vcf/exome_calls.vcf.gz" )
+		# self.setVCFFile( "/projects/pcgc/prod/data/expedat/yale_vcf/exome_calls.vcf.gz" )
+		self.setVCFFile( "/projects/pcgc/prod/data/expedat/incoming/yale/wide.*.targets.a.f-016.m.vcf.gz" )
 
 	def parseExomeFilePaths( self, exomeFile ):
 		with open( exomeFile, "r" ) as exomeFileReaderO:
@@ -225,6 +224,18 @@ class dirParse:
 			print "_______________________________________"
 			if ( float(relVals[2] ) > 0.354 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: Duplicate/MZ Twin Relation" #+ r[1]
+				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[1], idVals[4] )
+					if( not self.trioValidationDict.has_key( idVals[1] ) ):
+						self.trioValidationDict.update( { idVals[1] : "yes" } )
+					if( not self.childRelationCoefficientsDict.has_key( idVals[4] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[4] : relVals[2] } )
+				elif ( self.allChildBlindIds.count( idVals[4] ) == 1 and ( idVals[1] == idVals[4] + "-01" or idVals[1] == idVals[4] + "-02" ) ):
+					# print "child id: %s, parent id: %s"%( idVals[4], idVals[1] )
+					if( not self.trioValidationDict.has_key( idVals[4] ) ):
+						self.trioValidationDict.update( { idVals[4] : "yes" } )
+					if( not self.childRelationCoefficientsDict.has_key( idVals[1] ) ):
+						self.childRelationCoefficientsDict.update( { idVals[1] : relVals[2] } )
 			elif ( float(relVals[2] ) <= 0.354 and float( relVals[2] ) >= 0.177 ):
 				print "\n" + r[0] + "\nKinship Value: " + relVals[2] + "\nRelation: 1st-degree Relation" #+ r[1]
 				if ( self.allChildBlindIds.count( idVals[1] ) == 1 and ( idVals[4] == idVals[1] + "-01" or idVals[4] == idVals[1] + "-02" ) ):
