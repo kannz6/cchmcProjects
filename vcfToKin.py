@@ -5,7 +5,6 @@ import fileinput
 
 # database connection fields
 
-
 _n = 0
 _fileNumber = 0
 
@@ -60,8 +59,8 @@ class vcfToKin0:
 				if( awkResultFileLine.startswith( "module" ) ):
 					self.numberOfFiles = self.numberOfFiles + 1
 
-				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
-				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
+				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
+				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
 
 		vcfBatchJobsScript.close()
 
@@ -406,6 +405,7 @@ class vcfToKin0:
 		inputFileContent = [line.strip() for line in inputFileContent]
 
 		inputFileContent = filter(lambda x: "-" in x, inputFileContent)
+		#from main.py
 		children = set(filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), inputFileContent))
 		moms = set(filter(lambda x: x.endswith('-01'), inputFileContent))
 		dads = set(filter(lambda x: x.endswith('-02'), inputFileContent))
@@ -415,8 +415,8 @@ class vcfToKin0:
 		# batchJobFile.write("{0}\n\n".format(str(inputFileContent)))
 		inputFileContent.sort()
 
-		_bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} --force-samples -s".format(_vcfFileList)#yale
-		# _bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
+		# _bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} --force-samples -s".format(_vcfFileList)#yale
+		_bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
 
 		for c,_id in enumerate(inputFileContent):
 			global _n; global _fileNumber
@@ -429,8 +429,8 @@ class vcfToKin0:
 				_n = _n + 1
 			# else _n == 38 or (c == (len(inputFileContent) -1)):
 			else:
-				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
-				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
 				_n = 0
 				_fileNumber = _fileNumber + 1
 
