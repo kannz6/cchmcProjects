@@ -5,6 +5,7 @@ import fileinput
 
 # database connection fields
 
+
 _n = 0
 _fileNumber = 0
 
@@ -52,14 +53,15 @@ class vcfToKin0:
 			if (awkResultFileLine != ""):
 				with open( batchFileName, "w+" ) as awkResultFileWriter:
 					awkResultFileWriter.write( self.shellFileBSubCommands );
+					awkResultFileWriter.write( "if [ ! -d batch_{0} ]; then mkdir batch_{0}; fi\n".format(str(self.numberOfFiles)) );
 					awkResultFileWriter.write( awkResultFileLine );
 					awkResultFileWriter.write("\n")
 				awkResultFileWriter.close()
 				if( awkResultFileLine.startswith( "module" ) ):
 					self.numberOfFiles = self.numberOfFiles + 1
 
-				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
-				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
+				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
+				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
 
 		vcfBatchJobsScript.close()
 
@@ -69,6 +71,7 @@ class vcfToKin0:
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("plinkScriptFilesUsed.txt", "w+")
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchPlinkScript.awk", "w+")
 		n = 0
@@ -146,11 +149,13 @@ class vcfToKin0:
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("diffScriptFilesUsed.txt", "w+")
 		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchDiffScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
 			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
 			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
@@ -219,7 +224,6 @@ class vcfToKin0:
 			removeIdWriter.close()
 		directoriesUsedChecker.close()
 
-
 	def reFilterVcfFile(self, directory):
 
 		directoryFileNames = self.getFileNames( directory )
@@ -227,11 +231,13 @@ class vcfToKin0:
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("reFilterVcfScriptFilesUsed.txt", "w+")
 		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchReFilterScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
 			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
 			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
@@ -247,7 +253,7 @@ class vcfToKin0:
 					batchFileWriter.write("\n\n")
 					batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + diffFileName + "\")}' & \n");#yale
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + reFilterfFileName + "\")}' & \n");#yale
 				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + reFilterfFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
@@ -260,22 +266,25 @@ class vcfToKin0:
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("initialVcfFilterScriptFilesUsed.txt", "w+")
 		# listOfVcfFileNames = filter( (lambda x : re.match( r'(batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )#yale
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchInitialVcfFilterScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
 			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );#yale
-			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+			vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+			# vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				initialVcfFilterFileName = "batchInitialVcfFilter_"+ vcfFile_RegEx.group(3) + ".sh"
-				with open(plinkFileName, "w+") as batchFileWriter:
+				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 
 					batchFileWriter.write("module load bcftools/1.4\n")
 					# filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(1),vcfFile)
 					filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
 					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n".format(vcfFile_RegEx.group(1), vcfFile, filteredVcfFile))
+					batchFileWriter.write("".format(vcfFile_RegEx.group(2)))
 					batchFileWriter.write("bcftools view -m2 -M2 -v snps -Oz {0}/{1} > {2}\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
 					batchFileWriter.write("\n\n")
 					# batchFileWriter.write("mv {0} {1}".format(vcfFile,vcfFile_RegEx.group(1)+"/"))#yale
@@ -283,8 +292,8 @@ class vcfToKin0:
 					batchFileWriter.write("\n\n")
 					batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
+				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
@@ -365,6 +374,7 @@ class vcfToKin0:
 
 		directoriesUsedChecker.close()
 
+
 	def getProbandGenders(self, scriptFile, outputFile):
 	    script_file = scriptFile
 	    # load the query
@@ -388,31 +398,39 @@ class vcfToKin0:
 
 	    return results
 
-
 	def createBatchJobsFile(self, _inputFile,_vcfFileList, _outDirectory):
-		batchJobFile = open("awkResult.txt", "w+")
+		batchJobFile = open("{0}/awkResult.txt".format(_outDirectory), "w+")
 		with open(_inputFile, "r") as inputFileReader:
 			inputFileContent = inputFileReader.readlines()
 		inputFileReader.close()
 		inputFileContent = [line.strip() for line in inputFileContent]
-		probands = set()
-		for l in inputFileContent:
-			if inputFileContent.count(l[0:7]) != 1 and inputFileContent.count(l[0:7]+ "-01") != 1 and inputFileContent.count(l[0:7] + "-02") != 1:
-					continue
-			if(l == l[0:7]):
-				probands.add(l)
 
-		_bcftools_command = "module load bcftools/1.4 && bcftools concat -Oz -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)
-		for c,_id in enumerate(probands):
+		inputFileContent = filter(lambda x: "-" in x, inputFileContent)
+		children = set(filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), inputFileContent))
+		moms = set(filter(lambda x: x.endswith('-01'), inputFileContent))
+		dads = set(filter(lambda x: x.endswith('-02'), inputFileContent))
+		inputFileContent = filter(lambda x: x + '-01' in moms and x + '-02' in dads, children)
+
+
+		# batchJobFile.write("{0}\n\n".format(str(inputFileContent)))
+		inputFileContent.sort()
+
+		_bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} --force-samples -s".format(_vcfFileList)#yale
+		# _bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
+
+		for c,_id in enumerate(inputFileContent):
 			global _n; global _fileNumber
+			
 			if _n == 0:
 				batchJobFile.write("{0} {1},{1}-01,{1}-02,".format(_bcftools_command,_id))
 				_n = _n + 1
-			elif _n < 38 and (c != (len(probands) -1)) :
+			elif _n < 38 and (_id != inputFileContent[(len(inputFileContent) -1)]) :
 				batchJobFile.write("{0},{0}-01,{0}-02,".format(_id))
 				_n = _n + 1
-			elif _n == 38 or (c == (len(probands) -1)):
-				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+			# else _n == 38 or (c == (len(inputFileContent) -1)):
+			else:
+				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
 				_n = 0
 				_fileNumber = _fileNumber + 1
 
