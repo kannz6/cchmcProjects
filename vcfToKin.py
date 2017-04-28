@@ -5,7 +5,6 @@ import fileinput
 
 # database connection fields
 
-
 _n = 0
 _fileNumber = 0
 
@@ -116,10 +115,10 @@ class vcfToKin0:
 				_outDirectory = "{0}".format(vcfFile_RegEx.group(1) + "_kin")
 				_plinkFilesPostFix =  "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1) + "_plink")
 				_plinkBedFile =  "{0}".format(_plinkFilesPostFix + ".bed")
-				_plinkBedFile =  "{0}".format(_plinkFilesPostFix + ".fam")
+				_plinkFamFile =  "{0}".format(_plinkFilesPostFix + ".fam")
 				_kingFilesPostFix = "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1)+".king")
 				_tmpFamFile = "{0}/{0}_tmpFam.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
-				with open(plinkFileName, "w+") as batchFileWriter:
+				with open(plinkKingFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 
 					batchFileWriter.write("if [ ! -d {0} ]; then mkdir {0}; else rm {0}/*; fi\n".format(_outDirectory));
@@ -311,7 +310,7 @@ class vcfToKin0:
 		self.getFileNames( directory )
 		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
 		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
-		listOfRootBatchDirectories = filter( (lambda x : not x.endswith('_kin') and x.startswith('batch')), self.batchDirectories )
+		listOfRootBatchDirectories = filter( (lambda x : not x.endswith('_kin') and not x.endswith('_kin0') and x.startswith('batch')), self.batchDirectories )
 		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+$)', x) ), self.batchDirectories )
 		# batchScript = open("batchCreateBulkPSQLScript.awk", "w+")
 		directoriesUsedChecker = open("CreateBulkPSQLScript.txt", "w+")
