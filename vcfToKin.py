@@ -5,6 +5,7 @@ import fileinput
 
 # database connection fields
 
+
 _n = 0
 _fileNumber = 0
 
@@ -64,199 +65,199 @@ class vcfToKin0:
 
 		vcfBatchJobsScript.close()
 
+	# def createNOriginalIdFiles(self, directory):
+
+	# 	directoryFileNames = self.getFileNames( directory )
+	# 	# get all the files that match the file extension we are looking for
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
+	# 	filesUsedChecker = open("createNOriginalIdsScriptFilesUsed.txt", "w+")
+	# 	# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	batchScript = open("batchCreateOriginalIdScript.awk", "w+")
+	# 	n = 0
+	# 	for vcfFile in listOfVcfFileNames:
+	# 		# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
+	# 		vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+	# 		if vcfFile_RegEx:
+	# 			filesUsedChecker.write( vcfFile + "\n")
+	# 			createNOriginalIdFileName = "batchCreateNOriginalIds_"+ vcfFile_RegEx.group(3) + ".sh"
+	# 			_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+	# 			with open(plinkFileName, "w+") as batchFileWriter:
+	# 				batchFileWriter.write(self.shellFileBSubCommands);
+	# 				batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0} > {1}\n\n".format(vcfFile,_originalIdFile))
+	# 				batchFileWriter.close()
+
+	# 			# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + createNOriginalIdFileName + "\")}' & \n");
+	# 			batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + createNOriginalIdFileName + "\")}' & \n");
+
+	# 	filesUsedChecker.close()
+	# 	batchScript.close()
+
 	def createNPlinkAndKingBatchFiles(self, directory):
 
 		directoryFileNames = self.getFileNames( directory )
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
-		filesUsedChecker = open("plinkScriptFilesUsed.txt", "w+")
+		filesUsedChecker = open("plinkKingScriptFilesUsed.txt", "w+")
 		# listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		batchScript = open("batchPlinkScript.awk", "w+")
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(diff-filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		batchScript = open("batchPlinkAndKingScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );#yale
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
 			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
-				plinkFileName = "batchPlink_"+ vcfFile_RegEx.group(3) + ".sh"
+				plinkKingFileName = "batchPlinkKing_"+ vcfFile_RegEx.group(3) + ".sh"
+				_outDirectory = "{0}".format(vcfFile_RegEx.group(1) + "_kin")
+				_plinkFilesPostFix =  "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1) + "_plink")
+				_plinkBedFile =  "{0}".format(_plinkFilesPostFix + ".bed")
+				_plinkBedFile =  "{0}".format(_plinkFilesPostFix + ".fam")
+				_kingFilesPostFix = "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1)+".king")
+				_tmpFamFile = "{0}/{0}_tmpFam.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				with open(plinkFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
-					# batchFileWriter.write("rm -Rf " + vcfFile_RegEx.group(1) + "_kin0\n")#yale
-					# batchFileWriter.write("rm -Rf " + vcfFile_RegEx.group(1) + "_kin\n")
-					batchFileWriter.write("rm -Rf " + vcfFile_RegEx.group(2) + "_kin\n")#harvard
-					# batchFileWriter.write("mkdir " + vcfFile_RegEx.group(1) + "_kin0\n")
-					# batchFileWriter.write("mkdir " + vcfFile_RegEx.group(1) + "_kin\n\n")
-					batchFileWriter.write("mkdir " + vcfFile_RegEx.group(2) + "_kin\n\n")
-					# batchFileWriter.write("rm " + vcfFile_RegEx.group(1) + "/*\n\n")
 
-					# batchFileWriter.write("module load bcftools/1.4\n")
-					# filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(1),vcfFile)#yale
-					# filteredVcfFile = "{0}/{1}".format(vcfFile_RegEx.group(2),vcfFile)#harvard
-					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n".format(vcfFile_RegEx.group(1), vcfFile, filteredVcfFile))
+					batchFileWriter.write("if [ ! -d {0} ]; then mkdir {0}; else rm {0}/*; fi\n".format(_outDirectory));
 
 					batchFileWriter.write("module load plink/1.90b\n")
 
-					# batchFileWriter.write("plink --allow-extra-chr --vcf "+vcfFile+" --make-bed --out "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink\n")
-					# batchFileWriter.write("plink --allow-extra-chr --vcf "+vcfFile+" --make-bed --out "+vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink")
-					# batchFileWriter.write("plink --allow-extra-chr --vcf "+ filteredVcfFile+" --make-bed --out "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink\n")
-					# batchFileWriter.write("plink --allow-extra-chr --vcf "+filteredVcfFile+" --make-bed --out "+vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink")#yale file
-					batchFileWriter.write("plink --allow-extra-chr --vcf "+filteredVcfFile+" --make-bed --out "+vcfFile_RegEx.group(2)+"_kin/"+vcfFile_RegEx.group(2)+"_plink")#harvard file
-					# batchFileWriter.write("plink --allow-extra-chr --vcf "+vcfFile+" --make-bed --out "+vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+"_plink")
-					# batchFileWriter.write("\ncp {0}_kin/{0}_plink.fam {0}_kin/{1}\n".format(vcfFile_RegEx.group(1),"original_plink.txt"))
-					# batchFileWriter.write("\ncp {0}_kin/{0}_plink.fam {0}_kin/{1}\n".format(vcfFile_RegEx.group(2),"original_plink.txt"))
-
-					# batchFileWriter.write("./update_fam {0}\n".format(vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+"_plink.fam"))
-					# batchFileWriter.write("cp {0} {1}".format("update_fam.py", vcfFile_RegEx.group(1)))
-					# tmp_fam_file = "{0}/tmp_fam.tx".format()
-					# batchFileWriter.write("./update_fam.py {0} > {1}\n".format(vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink.fam",vcfFile_RegEx.group(1)+"_kin0/tmp_fam.txt"))
-					# batchFileWriter.write("./update_fam.py {0} > {1}\n".format(vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink.fam",vcfFile_RegEx.group(1)+"_kin/tmp_fam.txt"))
-					# batchFileWriter.write("./update_fam.py {0} > {1}\n".format(vcfFile_RegEx.group(2)+"_kin/"+vcfFile_RegEx.group(2)+"_plink.fam",vcfFile_RegEx.group(2)+"_kin/tmp_fam.txt"))
-					# batchFileWriter.write("cp tmp_fam.txt {0}\n".format(vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+"_plink.fam"))
-					# batchFileWriter.write("cp {0}tmp_fam.txt {1}\n".format(vcfFile_RegEx.group(1)+"_kin0/",vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink.fam"))
-					# batchFileWriter.write("cp {0}tmp_fam.txt {1}\n".format(vcfFile_RegEx.group(1)+"_kin/",vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink.fam"))
-					# batchFileWriter.write("cp {0}tmp_fam.txt {1}\n".format(vcfFile_RegEx.group(2)+"_kin/",vcfFile_RegEx.group(2)+"_kin/"+vcfFile_RegEx.group(2)+"_plink.fam"))
-					batchFileWriter.write("\n\n")
+					batchFileWriter.write("plink --allow-extra-chr --vcf {0} --make-bed --out {1}\n".format(vcfFile, _plinkFilesPostFix))
+					batchFileWriter.write("cp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))
 					batchFileWriter.write("module load king/1.4\n")
-					# batchFileWriter.write("king -b "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink.bed --prefix "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+".king\n")
-					# batchFileWriter.write("awk '{while(getline){if( $1 !~ /-(01|02)/){print $1 \" \" $1 \" \" $1\"-01 \" $1\"-02 0 -9\\n\" $1 \" \" $1\"-01 0 0 2 -9\\n\" $1 \" \" $1\"-02 0 0 1 -9\"}}}' " + vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink.fam > " + vcfFile_RegEx.group(1)+"_kin/"+"temp.txt\n\n")
-					# batchFileWriter.write("awk '{i=0;vals[0]=$1;while(getline){ if( $1 !~ /1-.*-(01|02)$/){vals[++i]=$1} };{ for(n=0;n <= i; n++){print vals[n] \" \" vals[n] \" \" vals[n]\"-01 \" vals[n]\"-02 0 -9\\n\" vals[n] \" \" vals[n]\"-01 0 0 2 -9\\n\" vals[n] \" \" vals[n]\"-02 0 0 1 -9\"} } }' " + vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+"_plink.fam > " + vcfFile_RegEx.group(1)+"/"+"temp.txt\n\n")
-					# batchFileWriter.write("cp "+ vcfFile_RegEx.group(1)+"/temp.txt "+ vcfFile_RegEx.group(1)+"/"+ vcfFile_RegEx.group(1)+"_plink.fam\n\n")
-					# batchFileWriter.write("cp "+ vcfFile_RegEx.group(1)+"_kin/temp.txt "+ vcfFile_RegEx.group(1)+"_kin/"+ vcfFile_RegEx.group(1)+"_plink.fam\n\n")
-					# batchFileWriter.write("module load king/2.0\n")
-					# batchFileWriter.write("module load king/1.4\n")
-					# batchFileWriter.write("king -b "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+"_plink.bed --prefix "+vcfFile_RegEx.group(1)+"_kin0/"+vcfFile_RegEx.group(1)+".king\n")
-					# batchFileWriter.write("king -b "+vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+"_plink.bed --kinship --prefix "+vcfFile_RegEx.group(1)+"_kin/"+vcfFile_RegEx.group(1)+".king")
-					batchFileWriter.write("king -b "+vcfFile_RegEx.group(2)+"_kin/"+vcfFile_RegEx.group(2)+"_plink.bed --kinship --prefix "+vcfFile_RegEx.group(2)+"_kin/"+vcfFile_RegEx.group(2)+".king")
-					# batchFileWriter.write("king -b "+vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+"_plink.bed --kinship --prefix "+vcfFile_RegEx.group(1)+"/"+vcfFile_RegEx.group(1)+".king")
+	
+					batchFileWriter.write("king -b {0} --kinship --prefix {1}".format(_plinkBedFile,_kingFilesPostFix))
 					batchFileWriter.write("\n\n")
-					# batchFileWriter.write("mv "+vcfFile_RegEx.group(1)+ "* "+vcfFile_RegEx.group(1)+"/")
-					# batchFileWriter.write("\n\n")
+
 					batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + plinkFileName + "\")}' & \n");
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkFileName + "\")}' & \n");
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + plinkKingFileName + "\")}' & \n");
+				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkKingFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
 
 
-	def diffOrigialVcfAndFilteredVcf(self, directory):
+	# def diffOrigialVcfAndFilteredVcf(self, directory):
 
-		directoryFileNames = self.getFileNames( directory )
-		# get all the files that match the file extension we are looking for
-		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
-		filesUsedChecker = open("diffScriptFilesUsed.txt", "w+")
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		batchScript = open("batchDiffScript.awk", "w+")
-		n = 0
-		for vcfFile in listOfVcfFileNames:
-			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
-			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
-			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
-			if vcfFile_RegEx:
-				filesUsedChecker.write( vcfFile + "\n")
-				diffFileName = "batchDiff_"+ vcfFile_RegEx.group(3) + ".sh"
-				with open(diffFileName, "w+") as batchFileWriter:
-					batchFileWriter.write(self.shellFileBSubCommands);
+	# 	directoryFileNames = self.getFileNames( directory )
+	# 	# get all the files that match the file extension we are looking for
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
+	# 	filesUsedChecker = open("diffScriptFilesUsed.txt", "w+")
+	# 	# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	batchScript = open("batchDiffScript.awk", "w+")
+	# 	n = 0
+	# 	for vcfFile in listOfVcfFileNames:
+	# 		# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
+	# 		# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
+	# 		vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
+	# 		if vcfFile_RegEx:
+	# 			filesUsedChecker.write( vcfFile + "\n")
+	# 			diffFileName = "batchDiff_"+ vcfFile_RegEx.group(3) + ".sh"
+	# 			with open(diffFileName, "w+") as batchFileWriter:
+	# 				batchFileWriter.write(self.shellFileBSubCommands);
 
-					batchFileWriter.write("module load bcftools/1.4\n")
-					originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(vcfFile_RegEx.group(2))
-					updatedIdFile = "{0}/{0}_updated_ids.txt".format(vcfFile_RegEx.group(2))
-					diffTxtFileName = "{0}/diff_result_{0}.txt" .format(vcfFile_RegEx.group(2))
-					batchFileWriter.write("bcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,originalIdFile))
-					# command1 = "awk '{print $2}'"
-					# command2 = "awk '{if($0 ~ \" \"){print $2} }'"
-					# TODO Fix created ids file command 4-20-17
-					createdIdsFile = "{0}/created_ids.txt".format(vcfFile_RegEx.group(2))
-					createdIdsCommand = "awk '{if ($1 !~ /.*-01$|.*-02$/){print $1 \"\\n\"$1\"-01\\n\"$1\"-02\"} }' {0} > {1}".format(originalIdFile,createdIdsFile)
-					batchFileWriter.write("{0}\n".format(createdIdsCommand))
-					# TODO Fix skip ids file command 4-20-17
-					skipIdsFile = "{0}/{0}_skip_ids.txt".format(vcfFile_RegEx.group(2))
-					skipIdsFileCommand = "diff {0} {1} | awk '{if($0 ~ \" \"){print $2} }' > {2}".format(createdIdsFile,originalIdFile,skipIdsFile)
-					batchFileWriter.write("{0}\n\n".format(skipIdsFileCommand))
-					# batchFileWriter.write("{0} {1}_kin/{1}_plink.fam > {2}\n\n".format(command1,vcfFile_RegEx.group(2),updatedIdFile))
-					# batchFileWriter.write("diff {0} {1} | {3} > {2}\n\n".format(originalIdFile,updatedIdFile,diffTxtFileName, command2))
-					# diffAndFilteredVcfFile = "{0}/diff-{1}".format(vcfFile_RegEx.group(2),vcfFile)
-					# command3 = "bcftools view -m2 -M2 -v snps -S ^"
-					# batchFileWriter.write("{3}{0} {4}/{1} > {2}\n".format(diffTxtFileName, vcfFile, diffAndFilteredVcfFile,command3,vcfFile_RegEx.group(2)))
-					batchFileWriter.write("\n\n")
-					batchFileWriter.close()
+	# 				batchFileWriter.write("module load bcftools/1.4\n")
+	# 				originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(vcfFile_RegEx.group(2))
+	# 				updatedIdFile = "{0}/{0}_updated_ids.txt".format(vcfFile_RegEx.group(2))
+	# 				diffTxtFileName = "{0}/diff_result_{0}.txt" .format(vcfFile_RegEx.group(2))
+	# 				batchFileWriter.write("bcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,originalIdFile))
+	# 				# command1 = "awk '{print $2}'"
+	# 				# command2 = "awk '{if($0 ~ \" \"){print $2} }'"
+	# 				# TODO Fix created ids file command 4-20-17
+	# 				createdIdsFile = "{0}/created_ids.txt".format(vcfFile_RegEx.group(2))
+	# 				createdIdsCommand = "awk '{if ($1 !~ /.*-01$|.*-02$/){print $1 \"\\n\"$1\"-01\\n\"$1\"-02\"} }' {0} > {1}".format(originalIdFile,createdIdsFile)
+	# 				batchFileWriter.write("{0}\n".format(createdIdsCommand))
+	# 				# TODO Fix skip ids file command 4-20-17
+	# 				skipIdsFile = "{0}/{0}_skip_ids.txt".format(vcfFile_RegEx.group(2))
+	# 				skipIdsFileCommand = "diff {0} {1} | awk '{if($0 ~ \" \"){print $2} }' > {2}".format(createdIdsFile,originalIdFile,skipIdsFile)
+	# 				batchFileWriter.write("{0}\n\n".format(skipIdsFileCommand))
+	# 				# batchFileWriter.write("{0} {1}_kin/{1}_plink.fam > {2}\n\n".format(command1,vcfFile_RegEx.group(2),updatedIdFile))
+	# 				# batchFileWriter.write("diff {0} {1} | {3} > {2}\n\n".format(originalIdFile,updatedIdFile,diffTxtFileName, command2))
+	# 				# diffAndFilteredVcfFile = "{0}/diff-{1}".format(vcfFile_RegEx.group(2),vcfFile)
+	# 				# command3 = "bcftools view -m2 -M2 -v snps -S ^"
+	# 				# batchFileWriter.write("{3}{0} {4}/{1} > {2}\n".format(diffTxtFileName, vcfFile, diffAndFilteredVcfFile,command3,vcfFile_RegEx.group(2)))
+	# 				batchFileWriter.write("\n\n")
+	# 				batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + diffFileName + "\")}' & \n");
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + diffFileName + "\")}' & \n");
+	# 			# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + diffFileName + "\")}' & \n");
+	# 			batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + diffFileName + "\")}' & \n");
 
-		filesUsedChecker.close()
-		batchScript.close()
+	# 	filesUsedChecker.close()
+	# 	batchScript.close()
 
-	def createRemoveInvalidIdsFile(self):
-		listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
-		batchScript = open("batchRemoveIdsScript.awk", "w+")
-		directoriesUsedChecker = open("createRemoveInvalidIdsFile-dirsUsed.txt", "w+")
-		for d in listOfRootBatchDirectories:
-			directoriesUsedChecker.write("{0}\n".format(d))
-			originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(d)
-			with open("{0}".format(originalIdFile), "r") as originalIdReader:
-				originalIdFileContent = originalIdReader.readlines()
-			originalIdReader.close()
-			originalIdFileContent = [line.strip() for line in originalIdFileContent]
+	# def createRemoveInvalidIdsFile(self):
+	# 	listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
+	# 	batchScript = open("batchRemoveIdsScript.awk", "w+")
+	# 	directoriesUsedChecker = open("createRemoveInvalidIdsFile-dirsUsed.txt", "w+")
+	# 	for d in listOfRootBatchDirectories:
+	# 		directoriesUsedChecker.write("{0}\n".format(d))
+	# 		originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(d)
+	# 		with open("{0}".format(originalIdFile), "r") as originalIdReader:
+	# 			originalIdFileContent = originalIdReader.readlines()
+	# 		originalIdReader.close()
+	# 		originalIdFileContent = [line.strip() for line in originalIdFileContent]
 
-			skipIdsFile = "{0}/{0}_skip_ids.txt".format(d)
-			with open("{0}".format(skipIdsFile), "r") as skipIdReader:
-				skipIdContent = skipIdReader.readlines()
-			skipIdReader.close()
-			skipIdContent =  [line.strip() for line in skipIdContent]
-			# print fileContent
-			# print skipIdContent
+	# 		skipIdsFile = "{0}/{0}_skip_ids.txt".format(d)
+	# 		with open("{0}".format(skipIdsFile), "r") as skipIdReader:
+	# 			skipIdContent = skipIdReader.readlines()
+	# 		skipIdReader.close()
+	# 		skipIdContent =  [line.strip() for line in skipIdContent]
+	# 		# print fileContent
+	# 		# print skipIdContent
 
-			removeIdsFile = "{0}/{0}-remove-ids.txt".format(d)
-			removeIdWriter = open("{0}".format(removeIdsFile), "w+")
+	# 		removeIdsFile = "{0}/{0}-remove-ids.txt".format(d)
+	# 		removeIdWriter = open("{0}".format(removeIdsFile), "w+")
 
-			for x in originalIdFileContent:
-				if originalIdFileContent.count(x[0:7]) == 1 and originalIdFileContent.count(x[0:7]+ "-01") == 1 and originalIdFileContent.count(x[0:7] + "-02") == 1:
-					continue
-				else:
-					# print "{0}".format(x)
-					removeIdWriter.write("{0}\n".format(x))
-			removeIdWriter.close()
-		directoriesUsedChecker.close()
+	# 		for x in originalIdFileContent:
+	# 			if originalIdFileContent.count(x[0:7]) == 1 and originalIdFileContent.count(x[0:7]+ "-01") == 1 and originalIdFileContent.count(x[0:7] + "-02") == 1:
+	# 				continue
+	# 			else:
+	# 				# print "{0}".format(x)
+	# 				removeIdWriter.write("{0}\n".format(x))
+	# 		removeIdWriter.close()
+	# 	directoriesUsedChecker.close()
 
-	def reFilterVcfFile(self, directory):
+	# def reFilterVcfFile(self, directory):
 
-		directoryFileNames = self.getFileNames( directory )
-		# get all the files that match the file extension we are looking for
-		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
-		filesUsedChecker = open("reFilterVcfScriptFilesUsed.txt", "w+")
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		batchScript = open("batchReFilterScript.awk", "w+")
-		n = 0
-		for vcfFile in listOfVcfFileNames:
-			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
-			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
-			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
-			if vcfFile_RegEx:
-				filesUsedChecker.write( vcfFile + "\n")
-				reFilterFileName = "batchReFilter_"+ vcfFile_RegEx.group(3) + ".sh"
-				with open(reFilterFileName, "w+") as batchFileWriter:
-					batchFileWriter.write(self.shellFileBSubCommands);
+	# 	directoryFileNames = self.getFileNames( directory )
+	# 	# get all the files that match the file extension we are looking for
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'.*(.vcf.gz)', x) ), directoryFileNames )
+	# 	filesUsedChecker = open("reFilterVcfScriptFilesUsed.txt", "w+")
+	# 	# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+	# 	batchScript = open("batchReFilterScript.awk", "w+")
+	# 	n = 0
+	# 	for vcfFile in listOfVcfFileNames:
+	# 		# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );
+	# 		# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
+	# 		vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );
+	# 		if vcfFile_RegEx:
+	# 			filesUsedChecker.write( vcfFile + "\n")
+	# 			reFilterFileName = "batchReFilter_"+ vcfFile_RegEx.group(3) + ".sh"
+	# 			with open(reFilterFileName, "w+") as batchFileWriter:
+	# 				batchFileWriter.write(self.shellFileBSubCommands);
 
-					batchFileWriter.write("module load bcftools/1.4\n")
-					removeIdsFile = "{0}/{0}-remove-ids.txt".format(vcfFile_RegEx.group(2))	
-					diffAndFilteredVcfFile = "{0}/diff-{1}".format(vcfFile_RegEx.group(2),vcfFile)
-					bcftoolsFilterCommand = "bcftools view -m2 -M2 -v snps -S ^{0} -Oz".format(removeIdsFile)
-					batchFileWriter.write("{0} {1}/{2} > {3}\n".format(bcftoolsFilterCommand, vcfFile_RegEx.group(2), vcfFile, diffAndFilteredVcfFile))
-					batchFileWriter.write("\n\n")
-					batchFileWriter.close()
+	# 				batchFileWriter.write("module load bcftools/1.4\n")
+	# 				removeIdsFile = "{0}/{0}-remove-ids.txt".format(vcfFile_RegEx.group(2))	
+	# 				diffAndFilteredVcfFile = "{0}/diff-{1}".format(vcfFile_RegEx.group(2),vcfFile)
+	# 				bcftoolsFilterCommand = "bcftools view -m2 -M2 -v snps -S ^{0} -Oz".format(removeIdsFile)
+	# 				batchFileWriter.write("{0} {1}/{2} > {3}\n".format(bcftoolsFilterCommand, vcfFile_RegEx.group(2), vcfFile, diffAndFilteredVcfFile))
+	# 				batchFileWriter.write("\n\n")
+	# 				batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + reFilterfFileName + "\")}' & \n");#yale
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + reFilterfFileName + "\")}' & \n");
+	# 			# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + reFilterfFileName + "\")}' & \n");#yale
+	# 			batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + reFilterfFileName + "\")}' & \n");
 
-		filesUsedChecker.close()
-		batchScript.close()
+	# 	filesUsedChecker.close()
+	# 	batchScript.close()
 
 	def filterInitialVcfFiles(self,directory):
 
@@ -264,35 +265,29 @@ class vcfToKin0:
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("initialVcfFilterScriptFilesUsed.txt", "w+")
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )#yale
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchInitialVcfFilterScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			# vcfFile_RegEx = re.search( r'.*(batch_([0-9]+))\.vcf\.gz', vcfFile );#yale
-			vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
-			# vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
+			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				initialVcfFilterFileName = "batchInitialVcfFilter_"+ vcfFile_RegEx.group(3) + ".sh"
+				filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
+				_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
+					batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,_originalIdFile))
 
-					batchFileWriter.write("module load bcftools/1.4\n")
-					# filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(1),vcfFile)
-					filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
-					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n".format(vcfFile_RegEx.group(1), vcfFile, filteredVcfFile))
-					batchFileWriter.write("".format(vcfFile_RegEx.group(2)))
-					batchFileWriter.write("bcftools view -m2 -M2 -v snps -Oz {0}/{1} > {2}\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
-					batchFileWriter.write("\n\n")
-					# batchFileWriter.write("mv {0} {1}".format(vcfFile,vcfFile_RegEx.group(1)+"/"))#yale
-					batchFileWriter.write("mv {0} {1}".format(vcfFile,vcfFile_RegEx.group(2)+"/"))#harvard
-					batchFileWriter.write("\n\n")
+					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
+					batchFileWriter.write("bcftools view -m2 -M2 -v snps -Oz {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
+
 					batchFileWriter.close()
 
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
+				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
@@ -314,48 +309,63 @@ class vcfToKin0:
 		\tAND (
 		\t\tcore_person.blinded_id ILIKE """
 		self.getFileNames( directory )
-		listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
+		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
+		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
+		listOfRootBatchDirectories = filter( (lambda x : not x.endswith('_kin') and x.startswith('batch')), self.batchDirectories )
+		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+$)', x) ), self.batchDirectories )
 		# batchScript = open("batchCreateBulkPSQLScript.awk", "w+")
 		directoriesUsedChecker = open("CreateBulkPSQLScript.txt", "w+")
-		directoriesUsedChecker.write(str(self.batchDirectories))
+		directoriesUsedChecker.write(str(listOfRootBatchDirectories) + "\n")
 		for d in listOfRootBatchDirectories:
 			directoriesUsedChecker.write("{0}\n".format(d))
-			originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(d)
+			originalIdFile = "{0}/{0}_sample_ids_original.txt".format(d)
+			# originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(d)
 			outputFile = "{0}/{0}_query_output_.dat".format(d)
-			famFile = "{0}/{0}_plink.fam".format(d)
+			# famFile = "{0}/{0}_plink.fam".format(d)
+			_tmpFamFile = "{0}/{0}_tmpFam.txt".format(d,d)
 			with open("{0}".format(originalIdFile), "r") as originalIdReader:
 				originalIdFileContent = originalIdReader.readlines()
 			originalIdReader.close()
 			originalIdFileContent = [line.strip() for line in originalIdFileContent]
 
+			originalIdFileContent = filter(lambda x: "-" in x, originalIdFileContent)
+			#from main.py
+			children = set(filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), originalIdFileContent))
+			moms = set(filter(lambda x: x.endswith('-01'), originalIdFileContent))
+			dads = set(filter(lambda x: x.endswith('-02'), originalIdFileContent))
+			originalIdFileContent = filter(lambda x: x + '-01' in moms and x + '-02' in dads, children)
+
+			# batchJobFile.write("{0}\n\n".format(str(originalIdFileContent)))
+			originalIdFileContent.sort()
+
 			triosSqlFile = "{0}/{0}_trios.sql".format(d)
 			triosSqlWriter = open("{0}".format(triosSqlFile), "w+")
 			triosSqlWriter.write(sqlStatement)
-			probands = set()
-			for x in originalIdFileContent:
-				if originalIdFileContent.count(x[0:7]) != 1 and originalIdFileContent.count(x[0:7]+ "-01") != 1 and originalIdFileContent.count(x[0:7] + "-02") != 1:
-					continue
-				else:
-					if(x != (x[0:7] + "-01") and x != (x[0:7]+ "-02") and x != (x[0:7]+ "-03")):
-						probands.add(x)
 
-			for i,p in enumerate(probands):
+			# for i,p in enumerate(probands):
+			for i,p in enumerate(originalIdFileContent):
 				if(i == 0):
-					if(len(probands) == 1):
+					# if(len(probands) == 1):
+					if( len(originalIdFileContent) == 1 ):
 						triosSqlWriter.write("'{0}%'\n\t)\n".format(p))
-					elif(len(probands) > 1):
+					# elif(len(probands) > 1):
+					elif( len(originalIdFileContent) > 1 ):
 						triosSqlWriter.write("'{0}%' or\n".format(p))
-				elif(i <= ( len(probands) - 2 )):
+				# elif(i <= ( len(probands) - 2 )):
+				elif ( i <= (len(originalIdFileContent)-2) ):
 					triosSqlWriter.write("\t\tcore_person.blinded_id ILIKE '{0}%' or\n".format(p))
-				elif( i == (len(probands) - 1)):
+				# elif( i == (len(probands) - 1)):
+				elif( i == (len(originalIdFileContent)-1) ):
 					triosSqlWriter.write("\t\tcore_person.blinded_id ILIKE '{0}%'\n\t)\n".format(p))
 			triosSqlWriter.write("ORDER BY core_person.blinded_id;\n")
 			triosSqlWriter.close()
+
 			probandWGenderIds = self.getProbandGenders(triosSqlFile, outputFile)
 			_ids = map(lambda x: {'id':x[0], 'gender':x[1]}, probandWGenderIds)#get the gender of the proband
 			# directoriesUsedChecker.write(str(_ids) + "\n\n____\n\n")
 			##########################
-			famFileWriter = open(famFile, "w+")
+			# famFileWriter = open(famFile, "w+")
+			famFileWriter = open(_tmpFamFile, "w+")
 			_usedIds = set()
 			for _id in _ids:
 			    if ( _id['gender'] == 'M' and _id['id'] not in _usedIds):
@@ -390,7 +400,7 @@ class vcfToKin0:
 	    # Convert the query to a call to psql
 	    command = command_line_query(query)
 	    # run
-	    # print os.popen(command).read()
+	    print os.popen(command).read()
 	    # read in and return the query results
 	    with open(outputFile,'r') as f:
 	        results = [each.strip().split('\t') for each in f.readlines()]
