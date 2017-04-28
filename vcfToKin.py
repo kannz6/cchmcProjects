@@ -8,6 +8,15 @@ import fileinput
 _n = 0
 _fileNumber = 0
 
+#################################
+#Steps
+#1. createbatchjobsfile
+#2. createNVcfBatchFiles
+#3. filterInitialVcfFiles
+#4. createBulkPSQLScripts
+#5. createNPlinkAndKingBatchFiles
+#################################
+
 def command_line_query(query):
     return "export PGPASSWORD=%s && psql -h %s -d %s -U %s -p %s -c \"%s\"" % (PG_PASSWORD,PG_HOST,PG_DBNAME,PG_USER,PG_PORT,query)
 
