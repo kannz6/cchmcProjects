@@ -5,6 +5,7 @@ import fileinput
 
 # database connection fields
 
+
 _n = 0
 _fileNumber = 0
 
@@ -68,8 +69,8 @@ class vcfToKin0:
 				if( awkResultFileLine.startswith( "module" ) ):
 					self.numberOfFiles = self.numberOfFiles + 1
 
-				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
-				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
+				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
+				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
 
 		vcfBatchJobsScript.close()
 
@@ -95,6 +96,7 @@ class vcfToKin0:
 				_plinkFamFile =  "{0}".format(_plinkFilesPostFix + ".fam")
 				_kingFilesPostFix = "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1)+".king")
 				_tmpFamFile = "{0}/{0}_tmpFam.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+				_gendersTextFile = "{0}/{0}_genders.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				with open(plinkKingFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 
@@ -102,8 +104,9 @@ class vcfToKin0:
 
 					batchFileWriter.write("module load plink/1.90b\n")
 
-					batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --make-bed --out {2}\n".format(vcfFile_RegEx.group(2),vcfFile,_plinkFilesPostFix))
-					batchFileWriter.write("cp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))
+					# batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --make-bed --out {2}\n".format(vcfFile_RegEx.group(2),vcfFile,_plinkFilesPostFix))
+					batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --update-sex {2} --check-sex --make-bed --out {3}\n".format(vcfFile_RegEx.group(2),vcfFile,_gendersTextFile,_plinkFilesPostFix))
+					batchFileWriter.write("\ncp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))###todo use tmpFam file to update sexes and then run checksex
 					batchFileWriter.write("module load king/1.4\n")
 	
 					batchFileWriter.write("king -b {0} --kinship --prefix {1}".format(_plinkBedFile,_kingFilesPostFix))
@@ -135,13 +138,15 @@ class vcfToKin0:
 				initialVcfFilterFileName = "batchInitialVcfFilter_"+ vcfFile_RegEx.group(3) + ".sh"
 				filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
 				_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+				_creationIdsFile = "{0}/{0}_creation_ids.txt".format(vcfFile_RegEx.group(2))
+				# _diffFile = "{0}/{0}_diff.txt".format(vcfFile_RegEx.group(2))
+				# _skipIdsCommand = "diff {0} {1} | awk '{if($0 ~ \" \"){print $2} }' > {2}\n\n".format(_originalIdFile,_creationIdsFile,_diffFile)
 				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 					batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,_originalIdFile))
-
+					# batchFileWriter.write("{0}\n\n".format(_skipIdsCommand))
 					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
 					batchFileWriter.write("bcftools view -m2 -M2 -S {0} -v snps -Oz {1}/{2} > {3}\n\n".format(_originalIdFile,vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
-
 					batchFileWriter.close()
 
 				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
@@ -181,6 +186,7 @@ class vcfToKin0:
 			outputFile = "{0}/{0}_query_output_.dat".format(d)
 			# famFile = "{0}/{0}_plink.fam".format(d)
 			_tmpFamFile = "{0}/{0}_tmpFam.txt".format(d,d)
+			_gendersTextFile = "{0}/{0}_genders.txt".format(d,d)
 			with open("{0}".format(originalIdFile), "r") as originalIdReader:
 				originalIdFileContent = originalIdReader.readlines()
 			originalIdReader.close()
@@ -224,19 +230,23 @@ class vcfToKin0:
 			##########################
 			# famFileWriter = open(famFile, "w+")
 			famFileWriter = open(_tmpFamFile, "w+")
+			gendersFileWriter = open(_gendersTextFile, "w+")
 			_usedIds = set()
 			for _id in _ids:
 			    if ( _id['gender'] == 'M' and _id['id'] not in _usedIds):
 					_proband_gender = '1'
 					# print "_proband_gender: %s"% _proband_gender
 					famFileWriter.write("{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\n".format(_id['id'],_proband_gender))
+					gendersFileWriter.write("{0} {0} {1}\n{0}-01 {0}-01 2\n{0}-02 {0}-02 1\n".format(_id['id'],_proband_gender))
 					_usedIds.add(_id['id'])
 			    elif( _id['gender'] == 'F' and _id['id'] not in _usedIds):
 					_proband_gender = '2'
 					# print "_proband_gender: %s"% _proband_gender
 					famFileWriter.write("{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\n".format(_id['id'],_proband_gender))
+					gendersFileWriter.write("{0} {0} {1}\n{0}-01 {0}-01 2\n{0}-02 {0}-02 1\n".format(_id['id'],_proband_gender))
 					_usedIds.add(_id['id'])
 			famFileWriter.close()
+			gendersFileWriter.close()
 			##########################
 
 		directoriesUsedChecker.close()
@@ -265,7 +275,7 @@ class vcfToKin0:
 
 	    return results
 
-	def createBatchJobsFile(self, _inputFile,_vcfFileList, _outDirectory):
+	def createBatchJobsFile(self, _inputFile,_vcfFileList,_outDirectory):
 		batchJobFile = open("{0}/awkResult.txt".format(_outDirectory), "w+")
 		with open(_inputFile, "r") as inputFileReader:
 			inputFileContent = inputFileReader.readlines()
@@ -284,11 +294,11 @@ class vcfToKin0:
 		inputFileContent.sort()
 
 		# _bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} --force-samples -s".format(_vcfFileList)#yale
-		_bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
+		_bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} -s".format(_vcfFileList)#yale
+		# _bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
 
 		for c,_id in enumerate(inputFileContent):
 			global _n; global _fileNumber
-			
 			if _n == 0:
 				batchJobFile.write("{0} {1},{1}-01,{1}-02,".format(_bcftools_command,_id))
 				_n = _n + 1
@@ -297,9 +307,9 @@ class vcfToKin0:
 				_n = _n + 1
 			# else _n == 38 or (c == (len(inputFileContent) -1)):
 			else:
-				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
-				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
 				_n = 0
 				_fileNumber = _fileNumber + 1
-
 		batchJobFile.close()
+		# bcftools stats -S yale-sample-ids.txt ../exome_calls.vcf.gz ../harvard.vcf.gz > concordance-yale-harvard-4-28-17.txt
