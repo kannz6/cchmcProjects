@@ -97,6 +97,7 @@ class vcfToKin0:
 				_kingFilesPostFix = "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1)+".king")
 				_tmpFamFile = "{0}/{0}_tmpFam.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				_gendersTextFile = "{0}/{0}_genders.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+				_update_fam_program = "update_fam.py"
 				with open(plinkKingFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 
@@ -106,7 +107,12 @@ class vcfToKin0:
 
 					# batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --make-bed --out {2}\n".format(vcfFile_RegEx.group(2),vcfFile,_plinkFilesPostFix))
 					batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --update-sex {2} --check-sex --make-bed --out {3}\n".format(vcfFile_RegEx.group(2),vcfFile,_gendersTextFile,_plinkFilesPostFix))
-					batchFileWriter.write("\ncp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))###todo use tmpFam file to update sexes and then run checksex
+					batchFileWriter.write("cp {0} {1}\n".format(_update_fam_program, _outDirectory))
+					# batchFileWriter.write("\ncp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))###todo use tmpFam file to update sexes and then run checksex
+					batchFileWriter.write("cd {0}\n".format(_outDirectory))
+					batchFileWriter.write("./{0} {1}_plink.fam > tmp.txt\n".format(_update_fam_program,vcfFile_RegEx.group(1)))
+					batchFileWriter.write("cp tmp.txt {1}_plink.fam\n".format(_update_fam_program,vcfFile_RegEx.group(1)))
+					batchFileWriter.write("cd ../..\n")
 					batchFileWriter.write("module load king/1.4\n")
 	
 					batchFileWriter.write("king -b {0} --kinship --prefix {1}".format(_plinkBedFile,_kingFilesPostFix))
