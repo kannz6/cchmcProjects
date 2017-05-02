@@ -80,13 +80,13 @@ class vcfToKin0:
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("plinkKingScriptFilesUsed.txt", "w+")
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchPlinkAndKingScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
-			# vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
+			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				plinkKingFileName = "batchPlinkKing_"+ vcfFile_RegEx.group(3) + ".sh"
@@ -95,7 +95,7 @@ class vcfToKin0:
 				_plinkBedFile =  "{0}".format(_plinkFilesPostFix + ".bed")
 				_plinkFamFile =  "{0}".format(_plinkFilesPostFix + ".fam")
 				_kingFilesPostFix = "{0}/{1}".format(_outDirectory,vcfFile_RegEx.group(1)+".king")
-				_tmpFamFile = "{0}/{0}_tmpFam.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+				_tmpFamFile = "tmpFam.txt"
 				_gendersTextFile = "{0}/{0}_genders.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				_update_fam_program = "update_fam.py"
 				with open(plinkKingFileName, "w+") as batchFileWriter:
@@ -105,13 +105,11 @@ class vcfToKin0:
 
 					batchFileWriter.write("module load plink/1.90b\n")
 
-					# batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --make-bed --out {2}\n".format(vcfFile_RegEx.group(2),vcfFile,_plinkFilesPostFix))
 					batchFileWriter.write("plink --allow-extra-chr --vcf {0}/{1} --update-sex {2} --check-sex --make-bed --out {3}\n".format(vcfFile_RegEx.group(2),vcfFile,_gendersTextFile,_plinkFilesPostFix))
 					batchFileWriter.write("cp {0} {1}\n".format(_update_fam_program, _outDirectory))
-					# batchFileWriter.write("\ncp {0} {1}\n\n".format(_tmpFamFile, _plinkFamFile))###todo use tmpFam file to update sexes and then run checksex
 					batchFileWriter.write("cd {0}\n".format(_outDirectory))
-					batchFileWriter.write("./{0} {1}_plink.fam > tmp.txt\n".format(_update_fam_program,vcfFile_RegEx.group(1)))
-					batchFileWriter.write("cp tmp.txt {1}_plink.fam\n".format(_update_fam_program,vcfFile_RegEx.group(1)))
+					batchFileWriter.write("./{0} {1}_plink.fam > {2}\n".format(_update_fam_program,vcfFile_RegEx.group(1),_tmpFamFile))
+					batchFileWriter.write("cp {0} {1}_plink.fam\n".format(_tmpFamFile,vcfFile_RegEx.group(1)))
 					batchFileWriter.write("cd ../..\n")
 					batchFileWriter.write("module load king/1.4\n")
 	
@@ -120,8 +118,8 @@ class vcfToKin0:
 
 					batchFileWriter.close()
 
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + plinkKingFileName + "\")}' & \n");
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkKingFileName + "\")}' & \n");
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + plinkKingFileName + "\")}' & \n");
+				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkKingFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
@@ -145,13 +143,10 @@ class vcfToKin0:
 				filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
 				_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 				_creationIdsFile = "{0}/{0}_creation_ids.txt".format(vcfFile_RegEx.group(2))
-				# _diffFile = "{0}/{0}_diff.txt".format(vcfFile_RegEx.group(2))
-				# _skipIdsCommand = "diff {0} {1} | awk '{if($0 ~ \" \"){print $2} }' > {2}\n\n".format(_originalIdFile,_creationIdsFile,_diffFile)
+
 				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
 					batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,_originalIdFile))
-					# batchFileWriter.write("{0}\n\n".format(_skipIdsCommand))
-					# batchFileWriter.write("bcftools view -m2 -M2 -v snps {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
 					batchFileWriter.write("bcftools view -m2 -M2 -S {0} -v snps -Oz {1}/{2} > {3}\n\n".format(_originalIdFile,vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
 					batchFileWriter.close()
 
@@ -178,20 +173,14 @@ class vcfToKin0:
 		\tAND (
 		\t\tcore_person.blinded_id ILIKE """
 		self.getFileNames( directory )
-		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
-		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+)$', x) ), self.batchDirectories )
+
 		listOfRootBatchDirectories = filter( (lambda x : not x.endswith('_kin') and not x.endswith('_kin0') and x.startswith('batch')), self.batchDirectories )
-		# listOfRootBatchDirectories = filter( (lambda x : re.match( r'.*(batch_[0-9]+$)', x) ), self.batchDirectories )
-		# batchScript = open("batchCreateBulkPSQLScript.awk", "w+")
-		directoriesUsedChecker = open("CreateBulkPSQLScript.txt", "w+")
+		directoriesUsedChecker = open("createBulkPSQLScriptDirectoriesUsed.txt", "w+")
 		directoriesUsedChecker.write(str(listOfRootBatchDirectories) + "\n")
 		for d in listOfRootBatchDirectories:
 			directoriesUsedChecker.write("{0}\n".format(d))
 			originalIdFile = "{0}/{0}_sample_ids_original.txt".format(d)
-			# originalIdFile = "{0}/{0}_filtered_vcf_ids_original.txt".format(d)
 			outputFile = "{0}/{0}_query_output_.dat".format(d)
-			# famFile = "{0}/{0}_plink.fam".format(d)
-			_tmpFamFile = "{0}/{0}_tmpFam.txt".format(d,d)
 			_gendersTextFile = "{0}/{0}_genders.txt".format(d,d)
 			with open("{0}".format(originalIdFile), "r") as originalIdReader:
 				originalIdFileContent = originalIdReader.readlines()
@@ -212,19 +201,14 @@ class vcfToKin0:
 			triosSqlWriter = open("{0}".format(triosSqlFile), "w+")
 			triosSqlWriter.write(sqlStatement)
 
-			# for i,p in enumerate(probands):
 			for i,p in enumerate(originalIdFileContent):
 				if(i == 0):
-					# if(len(probands) == 1):
 					if( len(originalIdFileContent) == 1 ):
 						triosSqlWriter.write("'{0}%'\n\t)\n".format(p))
-					# elif(len(probands) > 1):
 					elif( len(originalIdFileContent) > 1 ):
 						triosSqlWriter.write("'{0}%' or\n".format(p))
-				# elif(i <= ( len(probands) - 2 )):
 				elif ( i <= (len(originalIdFileContent)-2) ):
 					triosSqlWriter.write("\t\tcore_person.blinded_id ILIKE '{0}%' or\n".format(p))
-				# elif( i == (len(probands) - 1)):
 				elif( i == (len(originalIdFileContent)-1) ):
 					triosSqlWriter.write("\t\tcore_person.blinded_id ILIKE '{0}%'\n\t)\n".format(p))
 			triosSqlWriter.write("ORDER BY core_person.blinded_id;\n")
@@ -234,21 +218,15 @@ class vcfToKin0:
 			_ids = map(lambda x: {'id':x[0], 'gender':x[1]}, probandWGenderIds)#get the gender of the proband
 			# directoriesUsedChecker.write(str(_ids) + "\n\n____\n\n")
 			##########################
-			# famFileWriter = open(famFile, "w+")
-			famFileWriter = open(_tmpFamFile, "w+")
 			gendersFileWriter = open(_gendersTextFile, "w+")
 			_usedIds = set()
 			for _id in _ids:
 			    if ( _id['gender'] == 'M' and _id['id'] not in _usedIds):
 					_proband_gender = '1'
-					# print "_proband_gender: %s"% _proband_gender
-					famFileWriter.write("{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\n".format(_id['id'],_proband_gender))
 					gendersFileWriter.write("{0} {0} {1}\n{0}-01 {0}-01 2\n{0}-02 {0}-02 1\n".format(_id['id'],_proband_gender))
 					_usedIds.add(_id['id'])
 			    elif( _id['gender'] == 'F' and _id['id'] not in _usedIds):
 					_proband_gender = '2'
-					# print "_proband_gender: %s"% _proband_gender
-					famFileWriter.write("{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\n".format(_id['id'],_proband_gender))
 					gendersFileWriter.write("{0} {0} {1}\n{0}-01 {0}-01 2\n{0}-02 {0}-02 1\n".format(_id['id'],_proband_gender))
 					_usedIds.add(_id['id'])
 			famFileWriter.close()
