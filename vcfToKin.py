@@ -5,7 +5,6 @@ import fileinput
 
 # database connection fields
 
-
 _n = 0
 _fileNumber = 0
 
@@ -130,19 +129,18 @@ class vcfToKin0:
 		# get all the files that match the file extension we are looking for
 		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
 		filesUsedChecker = open("initialVcfFilterScriptFilesUsed.txt", "w+")
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+		listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		batchScript = open("batchInitialVcfFilterScript.awk", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
-			vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
-			# vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
+			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
+			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 			if vcfFile_RegEx:
 				filesUsedChecker.write( vcfFile + "\n")
 				initialVcfFilterFileName = "batchInitialVcfFilter_"+ vcfFile_RegEx.group(3) + ".sh"
 				filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
 				_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
-				_creationIdsFile = "{0}/{0}_creation_ids.txt".format(vcfFile_RegEx.group(2))
 
 				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
 					batchFileWriter.write(self.shellFileBSubCommands);
@@ -150,8 +148,8 @@ class vcfToKin0:
 					batchFileWriter.write("bcftools view -m2 -M2 -S {0} -v snps -Oz {1}/{2} > {3}\n\n".format(_originalIdFile,vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
 					batchFileWriter.close()
 
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
+				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
@@ -229,7 +227,6 @@ class vcfToKin0:
 					_proband_gender = '2'
 					gendersFileWriter.write("{0} {0} {1}\n{0}-01 {0}-01 2\n{0}-02 {0}-02 1\n".format(_id['id'],_proband_gender))
 					_usedIds.add(_id['id'])
-			famFileWriter.close()
 			gendersFileWriter.close()
 			##########################
 
@@ -289,7 +286,6 @@ class vcfToKin0:
 			elif _n < 38 and (_id != inputFileContent[(len(inputFileContent) -1)]) :
 				batchJobFile.write("{0},{0}-01,{0}-02,".format(_id))
 				_n = _n + 1
-			# else _n == 38 or (c == (len(inputFileContent) -1)):
 			else:
 				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
 				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
