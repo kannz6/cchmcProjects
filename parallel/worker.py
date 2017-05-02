@@ -182,29 +182,35 @@ class Trio:
 
     def _bsub_script_wrap(self, W, M, n, span, command):
         return "#!/bin/bash\n#BSUB -W %s\n#BSUB -M %s\n#BSUB -n %s\n#BSUB -R \"span[%s]\"\n\n%s\n\nexit"%(W, M, n, span, command)
+    
+    def _bsub_script_wrap_loni_job(self, W, M, n, J,span, command):
+        return "#!/bin/bash\n#BSUB -W %s\n#BSUB -M %s\n#BSUB -n %s\n#BSUB -J %s\n#BSUB -R \"span[%s]\"\n\n%s\n\nexit"%(W, M, n, J,span, command)
 
     def _in_parallel(self):
         ####
         #4-27-17
         #Testing getting loni id to kill jobs if loni module stopped prematurely
         ####
-        # loniJob = False
-        # _kill_job_command = ""
-        # try:
-        #     if os.path.exists("loniJobId.txt"):
-        #         with open("{0}".format("loniJobId.txt"), "r") as loniIdReader:
-        #             loniId = loniIdReader.readlines()
-        #         loniIdReader.close()
-        #         loniId = [line.strip() for line in loniId]
-        #         loniJob = True
-        #         _awk_command = "awk '{print $1}'"
-        #         _kill_job_command = "while ( ( test -n \"$( bjobs | grep \"{0}\"| {1} )\" ) ); do sleep 1; test -z \"$( bjobs | grep \"{0}\"| {1} )\" && exit; done &".format(loniId[0], _awk_command)
-        #         print "[Loni ID: {0}]\n".format(str(loniId[0]))
-        #     else:
-        #         print "loniJobId.txt doesn't exist in current directory! Is this a loni job?"
-        # except Exception as readLoniIdFailed:
-        #     print "[_in_parallel()] Exception thrown when trying to read loniJobId.txt read\nError: {0}\n".format(readLoniIdFailed)
-        # ####
+        loniJob = False
+        _kill_job_command = ""
+        _job_group_id = ""
+        try:
+            if os.path.exists("loniJobId.txt"):
+                with open("{0}".format("loniJobId.txt"), "r") as loniIdReader:
+                    loniId = loniIdReader.readlines()
+                loniIdReader.close()
+                loniId = [line.strip() for line in loniId]
+                loniJob = True
+                _awk_command = "awk '{print $1}'"
+                _job_group_id = str(loniId[0][3:])
+                _kill_job_command = "while ( ( test -n \"$( bjobs | grep \"{0}\"| {1} )\" ) ); do sleep 1; test -z \"$( bjobs | grep \"{0}\"| {1} )\" && bkill $( bjobs | grep \"{2}\"| {1} ); done &".format(loniId[0], _awk_command, _job_group_id)
+                print "[Loni ID: {0}]\ngroupid: {1}".format(str(loniId[0]), str(loniId[0][3:]))
+
+            else:
+                print "loniJobId.txt doesn't exist in current directory! Is this a loni job?"
+        except Exception as readLoniIdFailed:
+            print "[_in_parallel()] Exception thrown when trying to read loniJobId.txt read\nError: {0}\n".format(readLoniIdFailed)
+        ####
         bsubCommand = []
         for i, pair in enumerate(self.path_pairs):
             commands = ""
@@ -217,14 +223,8 @@ class Trio:
             ####
             # 3-30-17
             # add dynamic setting of module
-            # if loniJob:
-            #     _backroundJobId = "$!"
-            #     _backroundJobFile = "backroundID.txt"
-            #     commands += "{0}\n".format(_kill_job_command)
-            #     if i == 0:
-            #         commands += "echo \"{0}\" > {1}\n\n".format( _backroundJobId,_backroundJobFile)
-            #     else:
-            #         commands += "echo \"{0}\" >> {1}\n\n".format( _backroundJobId,_backroundJobFile)
+            if loniJob:
+                commands += "{0}\n".format(_kill_job_command)
             commands += "module load {0}\nbwa mem -t 8 {1} {2} {3} > {4}\n".format(_bwa,config.REF_FILE,P1_path,P2_path,output_path_sam)
             commands += "module load {0}\n".format(_samtools)
             ####
@@ -296,8 +296,12 @@ class Trio:
                 output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,blinded_id)
                 commands += "echo \"complete\" > {0}\n\n".format(output_job_finshed)
             ####
-            # 3-29-17
-            script = self._bsub_script_wrap(str(_wall),str(_memory),str(_cores),("ptile=%s"%(_cores)),commands)
+            #5-2-17
+            #add job name of loni job for killing
+            if loniJob:
+                script = self._bsub_script_wrap_loni_job(str(_wall),str(_memory),str(_cores), _job_group_id ,("ptile=%s"%(_cores)),commands)
+            else:
+                script = self._bsub_script_wrap(str(_wall),str(_memory),str(_cores),("ptile=%s"%(_cores)),commands)
             ####
             scriptName = "{0}/parallelize_{1}.sh".format(self.output_dir,blinded_id)
 
