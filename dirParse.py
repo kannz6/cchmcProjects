@@ -16,6 +16,7 @@ class dirParse:
 		self.trioValidationDict = {}
 		self.parentsRelatedCoefficientDict = {}
 		self.childRelationCoefficientsDict = {}
+		self.sampleGenderCheckDict = {}
 
 
 	def joinPaths ( self, rt, fname ):
@@ -179,18 +180,22 @@ class dirParse:
 		# get all the files that match the file extension we are looking for
 		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*kin0)', x) ), full_file_paths )
 		# list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin0)', x) ), full_file_paths )#king.kin0 format
-		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin$)', x) ), full_file_paths )#king.kin format
+		list_of_kin_files = filter( (lambda x : re.match( r'(.*\/.*king.kin$)', x) ), full_file_paths )#king.kin format#comment out 5-2-17
 		# print list_of_kin_files
 		# using the list from the kin files, extract the variables we need
-		map( self.parseKinFile, list_of_kin_files )
+		map( self.parseKinFile, list_of_kin_files )#comment out 5-2-17
 
 		# uncomment for input files
-		list_of_input_files = filter( (lambda x : re.match( r'(.*\/input_[0-9]+.dat)', x) ), full_file_paths )
+		list_of_input_files = filter( (lambda x : re.match( r'(.*\/input_[0-9]+.dat)', x) ), full_file_paths )#comment out 5-2-17
 		# print "input files: %s"% list_of_input_files
-		map( self.parseExomeFilePaths, list_of_input_files )
+		map( self.parseExomeFilePaths, list_of_input_files )#comment out 5-2-17
 
-		# self.setVCFFile( "/projects/pcgc/prod/data/expedat/yale_vcf/exome_calls.vcf.gz" )
-		self.setVCFFile( "/projects/pcgc/prod/data/expedat/incoming/yale/wide.*.targets.a.f-016.m.vcf.gz" )
+		self.setVCFFile( "/projects/pcgc/prod/data/expedat/yale_vcf/exome_calls.vcf.gz" )
+		# self.setVCFFile( "/projects/pcgc/prod/data/expedat/incoming/yale/wide.*.targets.a.f-016.m.vcf.gz" )#comment out 5-2-17
+
+		list_of_genderCheck_files = filter( (lambda x : re.match( r'(.*.sexcheck)', x) ), full_file_paths )
+		map( self.setGenderCheckStatuses, list_of_genderCheck_files )
+		# self.printGenderDict()
 
 	def parseExomeFilePaths( self, exomeFile ):
 		with open( exomeFile, "r" ) as exomeFileReaderO:
@@ -322,3 +327,48 @@ class dirParse:
 			spreadSheetString += str( self.trioValidationDict.get( blindID ) ) + ";" + str( self.parentsRelatedCoefficientDict.get( blindID ) ) + ";;;;;\n"
 
 		return spreadSheetString
+
+	def getSpreadSheetFortmatedBlindIdRelationDataWGender( self ):
+		spreadSheetString = "sep=;\nChild_id;Child_gender_status;Child_file;Mom_id;Mom_gender_status;Mom_relation_value;Mom_file;Dad_id;Dad_gender_status;Dad_relation_value;Dad_file;Trio_Validated;Parent_Relation_Coefficient;\n"
+		for blindID in self.allChildBlindIds:
+			# global spreadSheetString
+			spreadSheetString += blindID + ";" + self.sampleGenderCheckDict.get( blindID ) + ";" + str( self.blindIdFilePathDict.get( blindID ) ) + ";"
+			spreadSheetString += blindID + "-01" + ";" + self.sampleGenderCheckDict.get( blindID +"-01" ) + ";" + str( self.childRelationCoefficientsDict.get(blindID + "-01") ) + ";" + str( self.blindIdFilePathDict.get(blindID+"-01") ) + ";"
+			spreadSheetString += blindID + "-02" + ";" + self.sampleGenderCheckDict.get( blindID +"-02" ) + ";" + str( self.childRelationCoefficientsDict.get(blindID + "-02") ) + ";" + str( self.blindIdFilePathDict.get(blindID+"-02") ) + ";"
+			spreadSheetString += str( self.trioValidationDict.get( blindID ) ) + ";" + str( self.parentsRelatedCoefficientDict.get( blindID ) ) + ";;;;;\n"
+
+		return spreadSheetString
+
+	def setGenderCheckStatuses( self, fileName ):
+		with open(fileName, "r") as genderCheckFileReader:
+			genderCheckFileContent = genderCheckFileReader.readlines()
+		genderCheckFileReader.close()
+		
+		genderCheckFileContent = [line.split() for line in genderCheckFileContent]
+		# children = [filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), fileContent ) for fileContent in genderCheckFileContent]
+		children = filter(lambda x: '-01' not in x[1] and '-02' not in x[1] , genderCheckFileContent )
+		moms = filter(lambda x: '-01' in x[1] , genderCheckFileContent )
+		dads = filter(lambda x: '-02' in x[1] , genderCheckFileContent )
+		# print "children: {0}\n\nmoms: {1}\n\ndads: {2}\n\n".format(children,moms,dads)
+
+		map(self.setGender,children); map(self.setGender,moms);	map(self.setGender,dads)
+
+	def setGender( self, sampleID ):
+		gender = ["Ambiguous", "M", "F" ]
+		status = ["SNP-Ambiguous","OK","NOT OK"]
+		if(sampleID[0] == 'FID'):
+			return
+
+		if self.allChildBlindIds.count( sampleID[1][0:7] ) == 1:
+			if not self.sampleGenderCheckDict.has_key( sampleID[1] ):
+				if sampleID[4] == "PROBLEM":
+					if sampleID[3] == "0":
+						self.sampleGenderCheckDict.update( { sampleID[1] : status[0] } )
+					else:
+						self.sampleGenderCheckDict.update( { sampleID[1] : status[2] } )
+				else:
+					self.sampleGenderCheckDict.update( { sampleID[1] : "[" + gender[int(sampleID[2])] + "]: " + status[1] } )
+
+	def printGenderDict( self ):
+		for k,v in self.sampleGenderCheckDict.items():
+			print "[{0}]: {1}".format(k,v)
