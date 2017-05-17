@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os
 import re
+import stat
 import fileinput
 
 # database connection fields
@@ -19,6 +20,10 @@ _fileNumber = 0
 
 def command_line_query(query):
     return "export PGPASSWORD=%s && psql -h %s -d %s -U %s -p %s -c \"%s\"" % (PG_PASSWORD,PG_HOST,PG_DBNAME,PG_USER,PG_PORT,query)
+
+# http://stackoverflow.com/questions/12791997/how-do-you-do-a-simple-chmod-x-from-within-python
+def chmodOfScript(_fileName):#helper function
+	_st = os.stat(_fileName); os.chmod(_fileName, _st.st_mode | stat.S_IEXEC)
 
 class vcfToKin0:
 
@@ -53,7 +58,7 @@ class vcfToKin0:
 		
 		awkResultFileContent = [line.strip() for line in awkResultFileContent]
 
-		vcfBatchJobsScript = open( "runBatchJobsScript.awk", "w+" )
+		vcfBatchJobsScript = open( "runBatchJobsScript.sh", "w+" )
 
 		for awkResultFileLine in awkResultFileContent:
 			batchFileName = "batch_"+ str( self.numberOfFiles ) + ".sh"
@@ -68,8 +73,8 @@ class vcfToKin0:
 				if( awkResultFileLine.startswith( "module" ) ):
 					self.numberOfFiles = self.numberOfFiles + 1
 
-				vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + "\")}' & \n");
-				# vcfBatchJobsScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + "\")}' & \n");
+				# vcfBatchJobsScript.write("bsub < /scratch/kannz6/temp/vcfFiles/" + batchFileName + " & \n");
+				vcfBatchJobsScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + batchFileName + " & \n");
 
 		vcfBatchJobsScript.close()
 
@@ -81,7 +86,7 @@ class vcfToKin0:
 		filesUsedChecker = open("plinkKingScriptFilesUsed.txt", "w+")
 		# listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
 		listOfVcfFileNames = filter( (lambda x : re.match( r'(filtered-harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		batchScript = open("batchPlinkAndKingScript.awk", "w+")
+		batchScript = open("batchPlinkAndKingScript.sh", "w+")
 		n = 0
 		for vcfFile in listOfVcfFileNames:
 			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
@@ -117,42 +122,52 @@ class vcfToKin0:
 
 					batchFileWriter.close()
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + plinkKingFileName + "\")}' & \n");
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkKingFileName + "\")}' & \n");
+				# batchScript.write("bsub < /scratch/kannz6/temp/vcfFiles/" + plinkKingFileName + " & \n");
+				batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + plinkKingFileName + " & \n");
 
 		filesUsedChecker.close()
 		batchScript.close()
 
-	def filterInitialVcfFiles(self,directory):
+	def filterInitialVcfFiles(self,**kwargs):
 
-		directoryFileNames = self.getFileNames( directory )
-		# get all the files that match the file extension we are looking for
-		listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
-		filesUsedChecker = open("initialVcfFilterScriptFilesUsed.txt", "w+")
-		# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
-		batchScript = open("batchInitialVcfFilterScript.awk", "w+")
-		n = 0
-		for vcfFile in listOfVcfFileNames:
-			# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
-			vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
-			if vcfFile_RegEx:
-				filesUsedChecker.write( vcfFile + "\n")
-				initialVcfFilterFileName = "batchInitialVcfFilter_"+ vcfFile_RegEx.group(3) + ".sh"
-				filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
-				_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
+		if kwargs:
 
-				with open(initialVcfFilterFileName, "w+") as batchFileWriter:
-					batchFileWriter.write(self.shellFileBSubCommands);
-					batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,_originalIdFile))
-					batchFileWriter.write("bcftools view -m2 -M2 -S {0} -v snps -Oz {1}/{2} > {3}\n\n".format(_originalIdFile,vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
-					batchFileWriter.close()
+			directoryFileNames = self.getFileNames( kwargs['directory'] )
+			# get all the files that match the file extension we are looking for
+			listOfVcfFileNames = filter( (lambda x : re.match( r'.*(vcf.gz)', x) ), directoryFileNames )
+			filesUsedChecker = open("initialVcfFilterScriptFilesUsed.txt", "w+")
+			# listOfVcfFileNames = filter( (lambda x : re.match( r'(yale-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+			listOfVcfFileNames = filter( (lambda x : re.match( r'(harvard-batch_[0-9]+.vcf.gz)', x) ), listOfVcfFileNames )
+			_batchScriptName = "batchInitialVcfFilterScript.sh"
+			batchScript = open(_batchScriptName, "w+")
+			_filterInitialStorageDir = "filter_initial_vcf_scripts"
+			batchScript.write("if [ ! -d {0} ]; then mkdir {0}; else rm {0}/*; fi\nmv batchInitialVcfFilter_* {0}\n".format(_filterInitialStorageDir))
+			n = 0
+			for i,vcfFile in enumerate(listOfVcfFileNames):
+				# vcfFile_RegEx = re.search( r'.*(yale-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#yale
+				vcfFile_RegEx = re.search( r'.*(harvard-(batch_([0-9]+)))\.vcf\.gz', vcfFile );#harvard
 
-				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterFileName + "\")}' & \n");#yale
-				batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterFileName + "\")}' & \n");
+				if vcfFile_RegEx:
+					filesUsedChecker.write( vcfFile + "\n")
+					# initialVcfFilterScriptName = "{0}/{1}.sh".format(kwargs['directory'],"{0}_{1}".format("batchInitialVcfFilter",vcfFile_RegEx.group(3)))
+					initialVcfFilterScriptName = "{0}_{1}.sh".format("batchInitialVcfFilter",vcfFile_RegEx.group(3))
+					filteredVcfFile = "{0}/filtered-{1}".format(vcfFile_RegEx.group(2),vcfFile)
+					_originalIdFile = "{0}/{0}_sample_ids_original.txt".format(vcfFile_RegEx.group(2),vcfFile_RegEx.group(2))
 
-		filesUsedChecker.close()
-		batchScript.close()
+					with open(initialVcfFilterScriptName, "w+") as batchFileWriter:
+						batchFileWriter.write(self.shellFileBSubCommands);
+						batchFileWriter.write("module load bcftools/1.4\nbcftools query -l {0}/{1} > {2}\n\n".format(vcfFile_RegEx.group(2),vcfFile,_originalIdFile))
+						batchFileWriter.write("bcftools view -m2 -M2 -S {0} -v snps -Oz {1}/{2} > {3}\n\n".format(_originalIdFile,vcfFile_RegEx.group(2), vcfFile, filteredVcfFile))
+						batchFileWriter.close()
+
+					# batchScript.write("bsub < /scratch/kannz6/temp/vcfFiles/" + initialVcfFilterScriptName + " & \n");#yale
+					# batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + initialVcfFilterScriptName + " & \n");
+					batchScript.write("bsub < {0}/{1} & \n".format(_filterInitialStorageDir,initialVcfFilterScriptName))
+
+			filesUsedChecker.close()
+			batchScript.close()
+			chmodOfScript(_batchScriptName)
+			# vals = {"directory":/scratch/kannz6/temp/harvard-vcf/"}
 
 	def createBulkPSQLScripts(self, directory):
 		sqlStatement = """SELECT core_person.blinded_id AS blinded_id, core_subject.gender AS gender
@@ -275,9 +290,9 @@ class vcfToKin0:
 		inputFileContent.sort()
 
 		# _bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} --force-samples -s".format(_vcfFileList)#yale
-		_bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} -s".format(_vcfFileList)#yale
+		# _bcftools_command = "module load bcftools/1.4 && bcftools view -Oz {0} -s".format(_vcfFileList)#yale
 		# _bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz --force-samples -s".format(_vcfFileList)#harvard
-
+		_bcftools_command = "module load bcftools/1.4 && bcftools concat -f {0} |  bcftools view -Oz -s".format(_vcfFileList)#harvard
 		for c,_id in enumerate(inputFileContent):
 			global _n; global _fileNumber
 			if _n == 0:
@@ -287,9 +302,198 @@ class vcfToKin0:
 				batchJobFile.write("{0},{0}-01,{0}-02,".format(_id))
 				_n = _n + 1
 			else:
-				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
-				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				# batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/yale-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
+				batchJobFile.write("{0},{0}-01,{0}-02 > {1}/batch_{2}/harvard-batch_{2}.vcf.gz \n\n".format(_id,_outDirectory,_fileNumber))
 				_n = 0
 				_fileNumber = _fileNumber + 1
 		batchJobFile.close()
-		# bcftools stats -S yale-sample-ids.txt ../exome_calls.vcf.gz ../harvard.vcf.gz > concordance-yale-harvard-4-28-17.txt
+
+	def createBatchConcordanceFiles(self, **kwargs):
+		####-Params
+		####---{in=<input text file of vcfs to loop through>, -S=<sample-ids txt file>, f1=<file one>, f2=<file two>, out=<full path of output file to write results to>, outDir=<directory to place output files>}
+		####---i.e. bcftools stats -S yale-sample-ids.txt ../exome_calls.vcf.gz ../harvard.vcf.gz > concordance-yale-harvard-4-28-17.txt
+		_batchScriptName = "batchConcordanceCreationScript.sh"
+		batchScript = open(_batchScriptName, "w+")
+		_bulkConcordanceScriptsStorageDir = "concordance_scripts"
+		batchScript.write("if [ ! -d {0} ]; then mkdir {0}; else rm {0}/*; fi\nmv batchConcordanceCreation_* {0}\n".format(_bulkConcordanceScriptsStorageDir))
+		_moduleLoadCommand = "module load "
+		_concordanceScript = "{0}".format(self.shellFileBSubCommands)
+		_vcfFilePathsDict = {}
+		_bulkFilePathsScriptsList = []
+		if kwargs:
+			if'outDir' in kwargs.keys():
+				batchScript.write("if [ ! -d {0} ]; then mkdir {0}; fi\n".format(kwargs['outDir']))
+			
+			if 'bcfv' in kwargs.keys():
+				_moduleLoadCommand += "{0}\n".format(kwargs['bcfv'])
+			else:
+				_moduleLoadCommand += "{0}\n".format("bcftools/1.3")
+
+			if 'xS' in kwargs.keys():
+				_sampleIdFile = kwargs['xS']
+				_concordanceScript += "{0}\nbcftools stats -S ^{1} ".format(_moduleLoadCommand,_sampleIdFile)
+			elif 'S' in kwargs.keys():
+				_sampleIdFile = kwargs['S']
+				_concordanceScript += "{0}\nbcftools stats -S {1} ".format(_moduleLoadCommand,_sampleIdFile)
+
+			if 'e' in kwargs.keys():
+				_exclude = kwargs['e']
+				_concordanceScript += "-e \"{0}\" ".format(kwargs['e'])
+			
+			_file1 = kwargs['f1']; _concordanceScript += "{0} ".format(_file1)
+
+			if 'in' in kwargs.keys():
+				_inputTextFileOfVcfFilePaths = kwargs['in']
+				with open(_inputTextFileOfVcfFilePaths, 'r') as _inputTextFileOfVcfFilePathsReader:
+					_inputTextFileOfVcfFilePathsContent = _inputTextFileOfVcfFilePathsReader.readlines()
+				_inputTextFileOfVcfFilePathsReader.close()
+				_inputTextFileOfVcfFilePathsContent = [line.strip() for line in _inputTextFileOfVcfFilePathsContent]
+				[ _vcfFilePathsDict.update({ i+1 : v }) for i,v in enumerate(_inputTextFileOfVcfFilePathsContent) ]
+
+				[_bulkFilePathsScriptsList.append("{0} {1} > {2}/{3}_concordance.txt\n\nexit\n\n".format(_concordanceScript,v,kwargs['outDir'],k)) for k,v in _vcfFilePathsDict.items() ]
+				
+				for c,e in enumerate(_bulkFilePathsScriptsList):
+					bulkConcordanceFileName = "batchConcordanceCreation_{0}.sh".format(c+1)
+
+					with open(bulkConcordanceFileName, "w+") as batchFileWriter:
+						batchFileWriter.write("{0}".format(e))
+					batchFileWriter.close()
+
+					# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + bulkConcordanceFileName + "\")}' & \n");#yale
+					batchScript.write("bsub < {0}/{1} & \nsleep 1".format(_bulkConcordanceScriptsStorageDir,bulkConcordanceFileName))
+					# batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " & \nsleep 2\n");#harvard-dir
+
+			elif 'f2' in kwargs.keys():
+				_file2 = kwargs['f2']; _concordanceScript += "{0} ".format(_file2)
+				_concordanceResultsFile = "{0}/{1}".format(kwargs['outDir'],"concordance-result.txt"); _concordanceScript += "> {0}\n\nexit\n\n".format(_concordanceResultsFile)
+				bulkConcordanceFileName = "batchConcordanceCreation_1.sh"
+				with open(bulkConcordanceFileName, "w+") as batchFileWriter:
+					batchFileWriter.write("{0}".format(_concordanceScript))
+				batchFileWriter.close()
+				# _bulkConcordanceScriptsStorageDir
+				batchScript.write("bsub < {0}/{1} & \n".format(_bulkConcordanceScriptsStorageDir,bulkConcordanceFileName))
+				# batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " &\n");#harvard-dir
+
+		batchScript.close()
+		chmodOfScript(_batchScriptName)
+		# vals= {"S": "4-28-17/yale-sample-ids.txt","outDir" : "5-15-17", "bcfv" : "bcftools/1.3", "in" : "harvard.txt", "f1":"exome_calls.vcf.gz","e":r"FMT/QD<5 | FMT/AB < 0.2 | FMT/GQ < 10 | FMT/DP < 8"}
+		# createBatchConcordanceFiles(**vals)
+
+	def createBatchGrepScript(self, **kwargs):
+		####-kw arguments to search for in passed in variables dictionary
+		####---{inDir=<input directory where files to be greped reside>, fileExt=<extension to include in files to be grepped>,g=<what to grep in file(s)format: {"1":x,"2":y..."n":z}>, outDir=<directory to store output results>, outName=<output file name to append to result(s)> }
+		####-create bulk scripts that grep parameter in file
+		####---i.e. 
+		# get all the files that match the file extension we are looking for
+		#i.e. cat 5-15-17/96_concordance.txt | grep "GCsS"
+		_grepFileName = "grepScript.sh"
+		batchScript = open(_grepFileName, "w+")
+		if kwargs:
+			directoryFileNames = self.getFileNames( kwargs['inDir'] )
+			grepCommand = "{0}\nif [ ! -d {1}/{2} ]; then mkdir {1}/{2}; else rm {1}/{2}/*; fi\ncat {1}/* | egrep \'".format(self.shellFileBSubCommands,kwargs['inDir'],kwargs['outDir'])
+			for i,v in enumerate(kwargs['g']):
+				if i == (len(kwargs['g']) - 1) :
+					grepCommand += "{0}".format(kwargs['g'][v])
+				else:
+					grepCommand += "{0}|".format(kwargs['g'][v])
+
+			grepCommand += "\' > {0}\nexit\n\n".format("{0}/{1}/{2}".format(kwargs['inDir'],kwargs['outDir'],kwargs['outName']))
+			
+			with open(_grepFileName, "w+") as grepFileWriter:
+				grepFileWriter.write("{0}".format(grepCommand))
+			grepFileWriter.close()
+
+			chmodOfScript(_grepFileName)
+
+		# grepVals = {"inDir" : "5-15-17", "fileExt" : ".txt", "g" : {"1" : "GCsS", "2" : "GCiS"}, "outDir" : "yale-harvard-concordance", "outName" : "snpsAndIndels-yale-harvard.txt"}
+
+	def concatVcfFiles(self, **kwargs):
+		# bcftools concat -Oz -f harvard.txt -o /scratch/kannz6/temp/harvard-vcf/harvard-exome-5-17-17.vcf.gz
+		# bcftools index harvard-exome-5-17-17.vcf.gz
+		#kwargs = {"out":<filename of output>,"bcfv":<version of bcftools>,"htslibv":<htslib version>,"outDir":<directory to write output file to>}
+		if kwargs:
+			_listOfVcfFiles = kwargs['inFile']
+
+			if "vcf.gz" in kwargs['out']:
+				_outFile = kwargs['out']
+			else:
+				_outFile = "{0}.vcf.gz".format(kwargs['out'])
+
+			_command = "{0}".format(self.shellFileBSubCommands)
+			if kwargs['bcfv']:
+				if "bcftools" in kwargs['bcfv']:
+					if "/" in kwargs['bcfv']:
+						_command += "module load {0}\n".format(kwargs['bcfv'])
+					else:
+						_command += "module load /{0}\n".format(kwargs['bcfv'])
+				else:
+					_command += "module load bcftools/{0}\n".format(kwargs['bcfv'])
+			else:
+				_command += "module load {0}\n".format("bcftools/1.3")
+			
+			if kwargs['htslibv']: 
+				if "htslib" in kwargs['htslibv']:
+					if "/" in kwargs['htslibv']:
+						_command += "module load {0}\n".format(kwargs['htslibv'])
+					else:
+						_command += "module load /{0}\n".format(kwargs['htslibv'])
+				else:
+					_command += "module load htslib/{0}\n".format(kwargs['htslibv'])
+			else:
+				_command += "module load {0}\n".format("htslib/1.3")
+
+			if kwargs['outDir']: 
+				_command += "mkdir {0}\n".format(kwargs['outDir'])
+				_outFile = "{0}/{1}".format(kwargs['outDir'],_outFile)
+
+			_command += "bcftools concat -Oz -f {0} -o {1}\n".format(_listOfVcfFiles,_outFile)
+			_command += "bcftools index {0}\n\nexit\n\n".format(_outFile)
+
+			concatScriptFileName = "concatVcfsScript.sh"
+			with open(concatScriptFileName, "w+") as fileWriter:
+				fileWriter.write("{0}".format(_command))
+			fileWriter.close()
+			# batchScript.write("bsub < /scratch/kannz6/temp/vcfFiles/" + concatScriptFileName &\n");#yale
+
+
+	def testBulkNoAwk(self, **kwargs):
+		####-kw arguments to search for in passed in variables dictionary
+		####---{inDir=<input directory where files to be greped reside>, fileExt=<extension to include in files to be grepped>,g=<what to grep in file(s)format: {"1":x,"2":y..."n":z}>, outDir=<directory to store output results>, outName=<output file name to append to result(s)> }
+		####-create bulk scripts that grep parameter in file
+		####---i.e. 
+		# get all the files that match the file extension we are looking for
+		#i.e. cat 5-15-17/96_concordance.txt | grep "GCsS"
+		_batchScriptName = "testBulkNoAwk.sh"
+		batchScript = open(_batchScriptName, "w+")
+		_moduleLoadCommand = "module load "
+		_concordanceScript = "echo \"hello world, didn't use awk for these jobs!!!\""
+		_vcfFilePathsDict = {}
+		_bulkFilePathsScriptsList = []
+		if kwargs:
+			if kwargs['in']:
+				_inputTextFileOfVcfFilePaths = kwargs['in']
+			
+			with open(_inputTextFileOfVcfFilePaths, 'r') as _inputTextFileOfVcfFilePathsReader:
+				_inputTextFileOfVcfFilePathsContent = _inputTextFileOfVcfFilePathsReader.readlines()
+			_inputTextFileOfVcfFilePathsReader.close()
+			_inputTextFileOfVcfFilePathsContent = [line.strip() for line in _inputTextFileOfVcfFilePathsContent]
+			[ _vcfFilePathsDict.update({ i+1 : v }) for i,v in enumerate(_inputTextFileOfVcfFilePathsContent) ]
+			[_bulkFilePathsScriptsList.append("{0}{1} > {2}/{3}_noAwkTestResult.txt\n\nexit\n\n".format(self.shellFileBSubCommands,_concordanceScript,kwargs['outDir'],k)) for k,v in _vcfFilePathsDict.items() ]
+				
+			for c,e in enumerate(_bulkFilePathsScriptsList):
+				bulkConcordanceFileName = "bulkTestNoAwk_{0}.sh".format(c+1)
+
+				with open(bulkConcordanceFileName, "w+") as batchFileWriter:
+					batchFileWriter.write("{0}".format(e))
+				batchFileWriter.close()
+
+				# batchScript.write("awk 'BEGIN{system(\"bsub < /scratch/kannz6/temp/vcfFiles/" + bulkConcordanceFileName + "\")}' & \n");#yale
+				# batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " & \nsleep 2\n");#harvard-dir
+				if c < (len(_bulkFilePathsScriptsList) - 1):
+					batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " &\nsleep 1\n");#harvard-dir
+				else:
+					batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " &\n");#harvard-dir
+
+		batchScript.close()
+		chmodOfScript(_batchScriptName)
+		# tvals= {"outDir" : "test", "in" : "harvard.txt"}
