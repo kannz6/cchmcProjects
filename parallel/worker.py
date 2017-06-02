@@ -203,6 +203,7 @@ class Trio:
                 loniJob = True
                 _awk_command = "awk '{print $1}'"
                 _job_group_id = str(loniId[0][3:])
+                _initial_parent_status_check = "if ( test -z \"$( bjobs | grep \"{0}\"| {1} )\" ); then bkill $( bjobs | grep \"{2}\"| {1} ); fi".format(loniId[0], _awk_command, _job_group_id)
                 _kill_job_command = "while ( ( test -n \"$( bjobs | grep \"{0}\"| {1} )\" ) ); do sleep 1; test -z \"$( bjobs | grep \"{0}\"| {1} )\" && bkill $( bjobs | grep \"{2}\"| {1} ); done &".format(loniId[0], _awk_command, _job_group_id)
                 print "[Loni ID: {0}]\ngroupid: {1}".format(str(loniId[0]), str(loniId[0][3:]))
 
@@ -224,7 +225,8 @@ class Trio:
             # 3-30-17
             # add dynamic setting of module
             if loniJob:
-                commands += "{0}\n".format(_kill_job_command)
+                commands += "{0}\n{1}\n".format(_initial_parent_status_check,_kill_job_command)
+            
             commands += "module load {0}\nbwa mem -t 8 {1} {2} {3} > {4}\n".format(_bwa,config.REF_FILE,P1_path,P2_path,output_path_sam)
             commands += "module load {0}\n".format(_samtools)
             ####
@@ -243,7 +245,9 @@ class Trio:
             commands += "echo \"complete\" > {0}".format(output_file_finshed)
             
             ####3-20-17
-            if( i == len(self.path_pairs)-1):
+            if ( i < len(self.path_pairs) - 1):
+                commands += "\nkill %1"
+            elif( i == len(self.path_pairs)-1):
                 child_id = self.childs_blinded_id
                 mom_id = self.childs_blinded_id + '-01'
                 dad_id = self.childs_blinded_id + '-02'
@@ -293,8 +297,8 @@ class Trio:
                 commands += "king -b {0}.bed --kinship --prefix {1}\n".format(output_file_plink,output_file_king)
                 commands += "#cleanup directory for space management\nrm {0}/*plink*\nrm {0}/*bam\nrm {0}/*.bai\nrm {0}/*.vcf.gz\nrm {0}/*TMP*\nrm {0}/*kingX*\n".format(self.output_dir)         
                 
-                output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,blinded_id)
-                commands += "echo \"complete\" > {0}\n\n".format(output_job_finshed)
+                output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,self.childs_blinded_id)
+                commands += "echo \"complete\" > {0}\nkill %1".format(output_job_finshed)
             ####
             #5-2-17
             #add job name of loni job for killing

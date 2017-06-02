@@ -43,6 +43,9 @@ if __name__ == "__main__":
     print "collecting trios..."
     # get the ids and file paths for the known trios.
     trios = [filter(lambda x: x[0] in (ID,ID+'-01',ID+'-02'),ids_and_paths) for ID in trio_children]
+    # print trios
+    # print len(trios)
+    # serialize the records so that they can be written to a file.
     triosUsedChecker = open("triosStructure.txt", "w+")
     triosUsedChecker.write(str(trios))
 
@@ -82,7 +85,7 @@ if __name__ == "__main__":
                     except Exception as _bad_trios_index:
                         break
                 try:
-                    # _ids = [ v[0][0] for v in _trios_slice if "-02" not in v and "-01" not in v ]#works
+                    # _ids = [ v[0][0] for v in _trios_slice if "-02" not in v and "-01" not in v ]
                     _ids = [ [ _id[0] for c,_id in enumerate(v) if c % 2 == 0] for v in _trios_slice ]
                     _trio = _trios_slice[0][0]
                 except Exception as _bad_index:
@@ -92,7 +95,7 @@ if __name__ == "__main__":
                 depp = "{0}_output/{0}-trio-validation-complete.txt".format(_trio[0])
 
                 _trios_slice = [pickle.dumps(trio) for trio in _trios_slice]
-                lsf_job = LSF.LSFjob(worker_script='worker.py',
+                lsf_job = LSF.LSFjob(worker_script='workerWGender.py',
                                  operands=_trios_slice,
                                  node_count=len(_trios_slice),
                                  RAM=5000, # MB
@@ -135,12 +138,14 @@ if __name__ == "__main__":
     else:
         trios = [pickle.dumps(trio) for trio in trios]#moved here 5-25-17
         triosUsedChecker.write("\n\ninside else".format(len(trios)))
-        lsf_job = LSF.LSFjob(worker_script='worker.py',
-                         operands=trios,
-                         node_count=len(trios),
-                         RAM=5000, # MB
-                         run_ceiling_hours=24,
-                         run_ceiling_minutes=0,
-                         delim=',') # delimit records in the input files using commas because pickle uses newline characters.
+        lsf_job = LSF.LSFjob(worker_script='workerWGender.py',
+                             operands=trios,
+                             node_count=len(trios),
+                             RAM=5000, # MB
+                             run_ceiling_hours=24,
+                             run_ceiling_minutes=0,
+                             delim=',') # delimit records in the input files using commas because pickle uses newline characters.
         lsf_job.show_params()
         lsf_job.run()
+        triosUsedChecker = open("triosStructure.txt", "w+")
+        triosUsedChecker.write(str(trios))
