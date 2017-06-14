@@ -127,9 +127,9 @@ if __name__ == "__main__":
                     y = y + _node_count
                 _count = _count + 1
                 if _count - 1 == 0:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands)))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands),_ids[len(_ids)][0]))
                 else:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands)))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands),_ids[len(_ids)][0]))
 
             triosUsedChecker.close()
     else:
