@@ -87,12 +87,12 @@ if __name__ == "__main__":
                     _trio = _trios_slice[0][0]
                 except Exception as _bad_index:
                     break
-                triosUsedChecker.write("\n---------------------\ncount:{0}\n\nslice: {1}\n\n\n_trio: {2}\n\n\n_ids: {3}".format(_count,str(_trios_slice),_trio,_ids))
+                triosUsedChecker.write("\n---------------------\ncount:{0}\n\nslice: {1}\n\n\n_trio: {2}\n\n\n_ids: {3}\n\n{4}".format(_count,str(_trios_slice),_trio,_ids,_ids[len(_ids)-1][0]))
 
                 depp = "{0}_output/{0}-trio-validation-complete.txt".format(_trio[0])
 
                 _trios_slice = [pickle.dumps(trio) for trio in _trios_slice]
-                lsf_job = LSF.LSFjob(worker_script='worker.py',
+                lsf_job = LSF.LSFjob(worker_script='workerWGender.py',
                                  operands=_trios_slice,
                                  node_count=len(_trios_slice),
                                  RAM=5000, # MB
@@ -127,15 +127,15 @@ if __name__ == "__main__":
                     y = y + _node_count
                 _count = _count + 1
                 if _count - 1 == 0:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands,_ids[len(_ids)][0])))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands),_ids[len(_ids)-1][0]))
                 else:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands),_ids[len(_ids)][0]))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands),_ids[len(_ids)-1][0]))
 
             triosUsedChecker.close()
     else:
         trios = [pickle.dumps(trio) for trio in trios]#moved here 5-25-17
         triosUsedChecker.write("\n\ninside else".format(len(trios)))
-        lsf_job = LSF.LSFjob(worker_script='worker.py',
+        lsf_job = LSF.LSFjob(worker_script='workerWGender.py',
                          operands=trios,
                          node_count=len(trios),
                          RAM=5000, # MB
