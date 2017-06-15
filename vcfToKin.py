@@ -2,6 +2,7 @@
 import os
 import re
 import stat
+import sys
 import fileinput
 
 # database connection fields
@@ -338,7 +339,10 @@ class vcfToKin0:
 
 			if 'e' in kwargs.keys():
 				_exclude = kwargs['e']
-				_concordanceScript += "-e \"{0}\" ".format(kwargs['e'])
+				_concordanceScript += "-e \'{0}\' ".format(kwargs['e'])
+			elif 'i' in kwargs.keys():
+				_include = kwargs['i']
+				_concordanceScript += "-i \'{0}\' ".format(kwargs['i'])
 			
 			_file1 = kwargs['f1']; _concordanceScript += "{0} ".format(_file1)
 
@@ -390,7 +394,11 @@ class vcfToKin0:
 		batchScript = open(_grepFileName, "w+")
 		if kwargs:
 			directoryFileNames = self.getFileNames( kwargs['inDir'] )
-			grepCommand = "{0}\nif [ ! -d {1}/{2} ]; then mkdir {1}/{2}; else rm {1}/{2}/*; fi\ncat {1}/* | egrep \'".format(self.shellFileBSubCommands,kwargs['inDir'],kwargs['outDir'])
+			if "ext" in kwargs.keys():
+				_ext = "{0}".format(kwargs['fileExt'])
+			else:
+				_ext = "concordance-result.txt"
+			grepCommand = "{0}\nif [ ! -d {1}/{2} ]; then mkdir {1}/{2}; else rm {1}/{2}/*; fi\ncat {1}/*{3} | egrep \'".format(self.shellFileBSubCommands,kwargs['inDir'],kwargs['outDir'],_ext)
 			for i,v in enumerate(kwargs['g']):
 				if i == (len(kwargs['g']) - 1) :
 					grepCommand += "{0}".format(kwargs['g'][v])
@@ -407,20 +415,21 @@ class vcfToKin0:
 
 		# grepVals = {"inDir" : "5-15-17", "fileExt" : ".txt", "g" : {"1" : "GCsS", "2" : "GCiS"}, "outDir" : "yale-harvard-concordance", "outName" : "snpsAndIndels-yale-harvard.txt"}
 
-	def concatVcfFiles(self, **kwargs):
+	def bcfMergeConcatVcfFiles(self, **kwargs):
 		# bcftools concat -Oz -f harvard.txt -o /scratch/kannz6/temp/harvard-vcf/harvard-exome-5-17-17.vcf.gz
 		# bcftools index harvard-exome-5-17-17.vcf.gz
 		#kwargs = {"out":<filename of output>,"bcfv":<version of bcftools>,"htslibv":<htslib version>,"outDir":<directory to write output file to>}
 		if kwargs:
 			_listOfVcfFiles = kwargs['inFile']
 
-			if "vcf.gz" in kwargs['out']:
-				_outFile = kwargs['out']
-			else:
-				_outFile = "{0}.vcf.gz".format(kwargs['out'])
+			if "out" in kwargs.keys():
+				if "vcf.gz" in kwargs['out']:
+					_outFile = kwargs['out']
+				else:
+					_outFile = "{0}.vcf.gz".format(kwargs['out'])
 
 			_command = "{0}".format(self.shellFileBSubCommands)
-			if kwargs['bcfv']:
+			if "bcfv" in kwargs.keys() and kwargs['bcfv']:
 				if "bcftools" in kwargs['bcfv']:
 					if "/" in kwargs['bcfv']:
 						_command += "module load {0}\n".format(kwargs['bcfv'])
@@ -431,7 +440,7 @@ class vcfToKin0:
 			else:
 				_command += "module load {0}\n".format("bcftools/1.3")
 			
-			if kwargs['htslibv']: 
+			if "htslibv" in kwargs.keys() and kwargs['htslibv']: 
 				if "htslib" in kwargs['htslibv']:
 					if "/" in kwargs['htslibv']:
 						_command += "module load {0}\n".format(kwargs['htslibv'])
@@ -442,14 +451,26 @@ class vcfToKin0:
 			else:
 				_command += "module load {0}\n".format("htslib/1.3")
 
-			if kwargs['outDir']: 
-				_command += "mkdir {0}\n".format(kwargs['outDir'])
+			if "outDir" in kwargs.keys() and kwargs['outDir']:
+				_command += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format(kwargs['outDir'])
 				_outFile = "{0}/{1}".format(kwargs['outDir'],_outFile)
 
-			_command += "bcftools concat -Oz -f {0} -o {1}\n".format(_listOfVcfFiles,_outFile)
+			if "concat" in kwargs['tool']:
+				_command += "bcftools {0} -Oz -f {1} -o {2}\n".format(kwargs['tool'],_listOfVcfFiles,_outFile)
+			elif "merge" in kwargs['tool']:
+				_vcfFilePathsDict = {}
+				with open(_listOfVcfFiles, 'r') as _inputTextFileOfVcfFilePathsReader:
+					_inputTextFileOfVcfFilePathsContent = _inputTextFileOfVcfFilePathsReader.readlines()
+				_inputTextFileOfVcfFilePathsReader.close()
+				_inputTextFileOfVcfFilePathsContent = [line.strip() for line in _inputTextFileOfVcfFilePathsContent]
+				[ _vcfFilePathsDict.update({ i+1 : v }) for i,v in enumerate(_inputTextFileOfVcfFilePathsContent) ]
+				_indexCommands = [ "bcftools index -f {0}\n".format(_vcfFile) for _vcfFile in _vcfFilePathsDict.values() ]
+				for ic in _indexCommands:
+					_command += ic
+				_command += "bcftools {0} -Oz -l {1} --force-samples -o {2}\n".format(kwargs['tool'],_listOfVcfFiles,_outFile)
 			_command += "bcftools index {0}\n\nexit\n\n".format(_outFile)
 
-			concatScriptFileName = "concatVcfsScript.sh"
+			concatScriptFileName = "mergeConcatVcfsScript.sh"
 			with open(concatScriptFileName, "w+") as fileWriter:
 				fileWriter.write("{0}".format(_command))
 			fileWriter.close()
@@ -497,3 +518,144 @@ class vcfToKin0:
 		batchScript.close()
 		chmodOfScript(_batchScriptName)
 		# tvals= {"outDir" : "test", "in" : "harvard.txt"}
+
+	def createVcfFileSampleIdsFile(self, **kwargs):#kwargs: i,d,bcfv
+		if kwargs:
+			script = open("getVcfFileSampleIdsScript.sh", "w+")
+			cmd = "{0}".format(self.shellFileBSubCommands)
+
+			if "i" not in kwargs.keys():
+				sys.exit("No input vcf file in dictionary!")
+			else:
+				if "d" not in kwargs.keys():
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format("temp")
+					_d = "temp"
+				else:
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format(kwargs['d'])
+					_d = kwargs['d']
+
+				_vcfSampleIds = "{0}/{1}".format(_d,"sample_ids.txt")
+
+				if "bcfv" not in kwargs.keys():
+					cmd += "module load bcftools/1.4\nbcftools query -l {0} > {1}\n\nexit\n".format(kwargs['i'], _vcfSampleIds)
+				else:
+					cmd += "module load bcftools/{0}\nbcftools query -l {1} > {2}\n\nexit\n".format(kwargs['bcfv'],kwargs['i'],_vcfSampleIds)
+			script.write(cmd)
+			script.close()
+			# chmodOfScript(script)
+			# vals = {"i":"harvard-exome-5-17-17.vcf.gz","d":"5-25-17-refilterVcf"}
+			# batchRunner.createVcfFileSampleIdsFile(**vals)
+			
+	def filterSampleIds(self, **kwargs):#kwargs: s,d
+		if kwargs:
+
+			if "s" not in kwargs.keys():
+				sys.exit("No sample ids file in dictionary!")
+			with open(kwargs['s'], "r") as inputFileReader:
+				inputFileContent = inputFileReader.readlines()
+			inputFileReader.close()
+			inputFileContent = [line.strip() for line in inputFileContent]
+
+			inputFileContent = filter(lambda x: "-" in x, inputFileContent)
+			#from main.py
+			children = set(filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), inputFileContent))
+			moms = set(filter(lambda x: x.endswith('-01'), inputFileContent))
+			dads = set(filter(lambda x: x.endswith('-02'), inputFileContent))
+			inputFileContent = filter(lambda x: x + '-01' in moms and x + '-02' in dads, children)
+
+			inputFileContent.sort()
+			if "d" in kwargs.keys():
+				_outputFile = "{0}/filtered-sample-ids.txt".format(kwargs['d'])
+			else:
+				_outputFile = "{0}/filtered-sample-ids.txt".format("temp")
+			updatedSamplesFile = open(_outputFile, "w+")
+			[ updatedSamplesFile.write("{0}\n{0}-01\n{0}-02\n".format(_id)) for _id in inputFileContent ]
+			updatedSamplesFile.close()
+			
+			# vals = {"s":"5-25-17-refilterVcf/sample_ids.txt","d":"5-25-17-refilterVcf"}
+			# batchRunner.filterSampleIds(**vals)
+
+	def reFilterSingleVCF(self, **kwargs):#kwargs: i,d,bcfv,s,o,htslibv
+		if kwargs:
+			script = open("reFilterSingleVCFScript.sh", "w+")
+			cmd = "{0}".format(self.shellFileBSubCommands)
+
+			if "i" not in kwargs.keys():
+				sys.exit("No input vcf file in dictionary!")
+			else:
+				if "d" not in kwargs.keys():
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format("temp")
+					_d = "temp"
+				else:
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format(kwargs['d'])
+					_d = kwargs['d']
+
+				_vcfSampleIds = "{0}/{1}".format(_d,"sample_ids.txt")
+
+				if "bcfv" not in kwargs.keys():
+					cmd += "module load bcftools/1.4\n"
+				else:
+					cmd += "module load bcftools/{0}\n".format(kwargs['bcfv'])
+
+				if "s" not in kwargs.keys():
+					sys.exit("No sample ids file in dictionary!")
+				else:
+					if "o" in kwargs.keys():
+						_outFile = kwargs['o']
+						cmd += "bcftools view -m2 -M2 -S {0} -v snps -Oz {1} > {2}/{3}\n".format(kwargs['s'], kwargs['i'], kwargs['d'], kwargs['o'])
+					else:
+						_outFile = "{0}/filtered-{1}".format(_d,kwargs['i'])
+						cmd += "bcftools view -m2 -M2 -S {0} -v snps -Oz {1} > {2}\n".format(kwargs['s'], kwargs['i'], _outFile)
+
+				if "htslibv" not in kwargs.keys():
+					cmd += "module load htslib/1.3\nbcftools index {0}\n\nexit\n".format(_outFile)
+				else:
+					cmd += "module load htslib/{0}\nbcftools index {1}\n\nexit\n".format(kwargs['htslibv'],_outFile)
+
+			script.write(cmd)
+			script.close()
+			# chmodOfScript(script)
+			# vals = {"i":"harvard-exome-5-17-17.vcf.gz",s":"5-25-17-refilterVcf/filtered-sample-ids.txt","d":"5-25-17-refilterVcf"}
+			# batchRunner.reFilterSingleVCF(**vals)
+
+	def computeIntersection(self, **kwargs):#vcf-a,vcf-b,o,f-ex,f-in,d,htslibv,bcfv
+		if kwargs:
+			script = open("computeIntersection.sh", "w+")
+			cmd = "{0}".format(self.shellFileBSubCommands)
+
+			if "vcf-a" not in kwargs.keys() or "vcf-b" not in kwargs.keys():
+				sys.exit("Missing input vcf file(s). Must supply vcf-a AND vcf-b.")
+			else:
+				if "d" not in kwargs.keys():
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format("temp")
+					_d = "temp"
+				else:
+					cmd += "if [ ! -d {0} ]; then mkdir {0}; fi\n".format(kwargs['d'])
+					_d = kwargs['d']
+
+				if "htslibv" not in kwargs.keys():
+					cmd += "module load htslib/1.3\n"
+				else:
+					cmd += "module load htslib/{0}\n".format(kwargs['htslibv'])
+
+				if "bcfv" not in kwargs.keys():
+					cmd += "module load bcftools/1.4\n"
+				else:
+					cmd += "module load bcftools/{0}\n".format(kwargs['bcfv'])
+
+				cmd += "bcftools isec -p {0} -Oz ".format(kwargs['d'])
+
+				if "f-in" in kwargs.keys():
+					cmd += "-i \'{0}\' ".format(kwargs['f-in'])
+
+	 			if "f-ex" in kwargs.keys():
+					cmd += "-e \'{0}\' ".format(kwargs['f-ex'])
+
+				cmd += "{0} {1}\n".format(kwargs['vcf-a'], kwargs['vcf-b'])
+
+			script.write(cmd)
+			script.close()
+		else:
+			sys.exit("You must provide an arguments dictionary to computeIntersection:\nargs: vcf-a, vcf-b, o, f-ex, f-in, htslib, bcfv, d")
+		# vals = {"d":"6-1-17-intersection",vcf-a":"filtered-harvard-exome-5-17-17.vcf.gz","vcf-b":"exome_calls.vcf.gz",}
+		# batchRunner.computeIntersection(**vals)
