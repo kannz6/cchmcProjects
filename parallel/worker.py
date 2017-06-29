@@ -213,10 +213,16 @@ class Trio:
             print "[_in_parallel()] Exception thrown when trying to read loniJobId.txt read\nError: {0}\n".format(readLoniIdFailed)
         ####
         bsubCommand = []
+        _used_blinded_ids = []
         for i, pair in enumerate(self.path_pairs):
             commands = ""
 
             blinded_id = pair[0]['id']
+            ####################################
+            if len(self.path_pairs) > 3:
+                blinded_id += "-{0}".format(i)
+                _used_blinded_ids.append(blinded_id)
+            ####################################
             P1_path = os.path.join(config.BASE_PATH, pair[0]['path'][1:] if pair[0]['path'].startswith("/") else pair[0]['path'])
             P2_path = os.path.join(config.BASE_PATH, pair[1]['path'][1:] if pair[0]['path'].startswith("/") else pair[1]['path'])
             output_path_sam = "{0}/aligned.{1}.sam".format(self.output_dir, blinded_id)
@@ -247,17 +253,34 @@ class Trio:
             ####3-20-17
             if ( i < len(self.path_pairs) - 1):
                 commands += "\nkill %1"
-            elif( i == len(self.path_pairs)-1):
+            elif( i == len(self.path_pairs) - 1):
                 child_id = self.childs_blinded_id
                 mom_id = self.childs_blinded_id + '-01'
                 dad_id = self.childs_blinded_id + '-02'
-                commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                if len(self.path_pairs) == 3:
+                    commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                elif len(self.path_pairs) > 3:
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        if j == 0:
+                            commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                        elif j < (len(_used_blinded_ids) - 1) :
+                            commands += "&& test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                        else:
+                            commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,b_id_multi_key)
+
                 ####
                 # 3-30-17
                 # add dynamic setting of module
                 commands += "#module load {0}\nmodule load {1}\n".format(_samtools, _bcftools)
-                ####
-                commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                ############################################################################
+                if len(self.path_pairs) == 3:
+                    commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                
+                elif len(self.path_pairs) > 3:
+                    commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)
+                ##############################################################################
                 commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
 
                 input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)
