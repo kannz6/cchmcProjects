@@ -166,13 +166,17 @@ class LSFjob:
                         if "jid" in kwargs.keys() and kwargs['jid'] is not None:
                             # add = {"df":_trio_id,"J": str(kwargs['jid']) + "-" + str(i), "w": str(kwargs['jid']) + "-" + str(i-(self.node_count))}
                             add = {"df":_trio_id,"J": str(kwargs['jid']) + "-" + str(i)}
+                            if len(kwargs['dep'][c]) > 3:
+                                add.update({"multi-key-dep":kwargs['dep'][c]})
                             cmd = self.lsf_command_wrapper(i,**add)
                         else:
                             # add = {"df":_trio_id,"J": "nonloni-" + str(i), "w": "nonloni-"+ str(i-(self.node_count))}
                             add = {"df":_trio_id,"J": "nonloni-" + str(i)}
+                            if len(kwargs['dep'][c]) > 3:
+                                add.update({"multi-key-dep":kwargs['dep'][c]})
                             cmd = self.lsf_command_wrapper(i,**add)
                         os.popen(cmd)
-                        print "dep: {0}\ntrio dependency: {1}".format(kwargs['dep'],_trio_id)
+                        print "dep: {0}\ntrio dependency: {1}\nlength trio dep: {2}".format(kwargs['dep'],_trio_id,len(kwargs['dep'][c]))
                         print cmd
         else:
             for i in range(self.node_count):
@@ -193,7 +197,17 @@ class LSFjob:
             if "J" in extraOptions.keys():
                 cmd += " -J \"{0}\"".format(extraOptions["J"])
             if "df" in extraOptions.keys():
-                cmd = "while ! (test -e \"{0}_output/{0}-done.txt\" && test -e \"{0}_output/{0}-01-done.txt\" && test -e \"{0}_output/{0}-02-done.txt\"); do sleep 90; done;\n{1}".format(extraOptions['df'],cmd)
+                if "multi-key-dep" not in extraOptions.keys():
+                    cmd = "while ! (test -e \"{0}_output/{0}-done.txt\" && test -e \"{0}_output/{0}-01-done.txt\" && test -e \"{0}_output/{0}-02-done.txt\"); do sleep 90; done;\n{1}".format(extraOptions['df'],cmd)
+                else:
+                    cmd = "while ! ("
+                    for i,df in enumerate(extraOptions["multi-key-dep"]):
+                        if i < len(extraOptions["multi-key-dep"]) - 1:
+                            cmd += "test -e \"{0}_output/{1}-{2}-done.txt\" && ".format(extraOptions['df'],df,i)
+                        elif i == len(extraOptions["multi-key-dep"]) - 1:
+                            cmd += "test -e \"{0}_output/{1}-{2}-done.txt\"); do sleep 90; done;\n".format(extraOptions['df'],df,i)
 
-        cmd += "; sleep 10"
+            else:
+                cmd += "; " 
+        cmd += "sleep 10"
         return cmd
