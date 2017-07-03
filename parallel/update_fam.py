@@ -53,7 +53,10 @@ for i,line in enumerate(fileinput.input()):
     columns=line.split(' ')
     new_columns=columns[:]
     # print(columns)
-    # print(new_columns)
+    #print(new_columns)
+    _id = new_columns[1].split(".")
+   # print(_id)
+    _id = _id[1]
     match = r_parse_base_id.match(columns[0])
 
     family_id = match.group(1)
@@ -63,22 +66,28 @@ for i,line in enumerate(fileinput.input()):
 
     if(i == 0):
         new_columns[0] = family_id
-        new_columns[1] = family_id
+        new_columns[1] = _id
         new_columns[2] = family_id + '-01'
         new_columns[3] = family_id + '-02'
         new_columns[4] = sex
-    elif(i == 1):
-        sex = '2'
+    elif (i % 2) == 1:
+        if "-01" in _id:
+            sex = '2'
+        elif "-02" in _id:
+            sex = '1'
         new_columns[0] = family_id
-        new_columns[1] = family_id + '-01'
+        new_columns[1] = _id
         new_columns[4] = sex
-    elif(i == 2):
-        sex = '1'
+    elif (i % 2 ) == 0:
+        if "-01" in _id:
+            sex = '2'
+        elif "-02" in _id:
+            sex = '1'
         new_columns[0] = family_id
-        new_columns[1] = family_id + '-02'
+        new_columns[1] = _id
         new_columns[4] = sex
     tmpFamFileWriter.write(' '.join(new_columns))
     tmpFamFileWriter.write("\n")
-    # print(' '.join(new_columns))#bulk yale vcf use > to write to file in
+    #print(' '.join(new_columns))#bulk yale vcf use > to write to file in
 tmpFamFileWriter.close()
 ######################
