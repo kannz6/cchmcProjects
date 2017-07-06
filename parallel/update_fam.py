@@ -18,13 +18,13 @@ path = "tmp_fam.txt"
 #     match = r_parse_base_id.match(columns[0])
 
 #     family_id = match.group(1)
-#     sex = '0'
+#     gender = '0'
 #     mother_id = '0'
 #     father_id = '0'
 #     if match.group(2) == '-01':
-#         sex = '2'
+#         gender = '2'
 #     elif match.group(2) == '-02':
-#         sex = '1'
+#         gender = '1'
 #     elif match.group(2) is None:
 #         mother_id = family_id + '-01'
 #         father_id = family_id + '-02'
@@ -34,7 +34,7 @@ path = "tmp_fam.txt"
 #     new_columns[0] = family_id
 #     new_columns[2] = mother_id
 #     new_columns[3] = father_id
-#     new_columns[4] = sex
+#     new_columns[4] = gender
 #     tmpFamFileWriter.write(' '.join(new_columns))
 #     tmpFamFileWriter.write("\n")
 #     # print(' '.join(new_columns))#bulk yale vcf use > to write to file in
@@ -60,7 +60,7 @@ for i,line in enumerate(fileinput.input()):
     match = r_parse_base_id.match(columns[0])
 
     family_id = match.group(1)
-    sex = '0'
+    gender = '0'
     mother_id = '0'
     father_id = '0'
 
@@ -69,23 +69,23 @@ for i,line in enumerate(fileinput.input()):
         new_columns[1] = _id
         new_columns[2] = family_id + '-01'
         new_columns[3] = family_id + '-02'
-        new_columns[4] = sex
+        new_columns[4] = gender
     elif (i % 2) == 1:
-        if "-01" in _id:
-            sex = '2'
-        elif "-02" in _id:
-            sex = '1'
+        if _id.endswith("-01"):
+            gender = '2'
+        elif _id.endswith("-02"):
+            gender = '1'
         new_columns[0] = family_id
         new_columns[1] = _id
-        new_columns[4] = sex
+        new_columns[4] = gender
     elif (i % 2 ) == 0:
-        if "-01" in _id:
-            sex = '2'
-        elif "-02" in _id:
-            sex = '1'
+        if _id.endswith("-01"):
+            gender = '2'
+        elif _id.endswith("-02"):
+            gender = '1'
         new_columns[0] = family_id
         new_columns[1] = _id
-        new_columns[4] = sex
+        new_columns[4] = gender
     tmpFamFileWriter.write(' '.join(new_columns))
     tmpFamFileWriter.write("\n")
     #print(' '.join(new_columns))#bulk yale vcf use > to write to file in
