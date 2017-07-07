@@ -200,14 +200,15 @@ class LSFjob:
                 if "multi-key-dep" not in extraOptions.keys():
                     cmd = "while ! (test -e \"{0}_output/{0}-done.txt\" && test -e \"{0}_output/{0}-01-done.txt\" && test -e \"{0}_output/{0}-02-done.txt\"); do sleep 90; done;\n{1}".format(extraOptions['df'],cmd)
                 else:
+                    original_cmd = cmd
                     cmd = "while ! ("
                     for i,df in enumerate(extraOptions["multi-key-dep"]):
                         if i < len(extraOptions["multi-key-dep"]) - 1:
                             cmd += "test -e \"{0}_output/{1}-{2}-done.txt\" && ".format(extraOptions['df'],df,i)
                         elif i == len(extraOptions["multi-key-dep"]) - 1:
                             cmd += "test -e \"{0}_output/{1}-{2}-done.txt\"); do sleep 90; done;\n".format(extraOptions['df'],df,i)
-
+                    cmd += "{0};".format(original_cmd)
             else:
-                cmd += "; " 
-        cmd += "sleep 10"
+                cmd += ";" 
+        cmd += " sleep 10"
         return cmd
