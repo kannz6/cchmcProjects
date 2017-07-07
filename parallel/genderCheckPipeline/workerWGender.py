@@ -214,6 +214,10 @@ class Trio:
             print "[_in_parallel()] Exception thrown when trying to read loniJobId.txt read\nError: {0}\n".format(readLoniIdFailed)
         ####
         bsubCommand = []
+        ####################################
+        #7-5-17
+        # added _used_blinded_ids variable for multi-key-blinded-id
+        _used_blinded_ids = []
         _proband_gender = ''
         for i, pair in enumerate(self.path_pairs):
             commands = ""
@@ -222,6 +226,13 @@ class Trio:
             #Add gender of proband
             ##########################
             blinded_id = pair[0]['id']
+            ####################################
+            #7-5-17
+            # added _used_blinded_ids variable for multi-key-blinded-id
+            if len(self.path_pairs) > 3:
+                blinded_id += "-{0}".format(i)
+                _used_blinded_ids.append(blinded_id)
+            ####################################
             if (i == 0):
                 if ( pair[0]['gender'] == 'M'):
                     _proband_gender = '1'
@@ -271,14 +282,39 @@ class Trio:
                 child_id = self.childs_blinded_id
                 mom_id = self.childs_blinded_id + '-01'
                 dad_id = self.childs_blinded_id + '-02'
-                commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                ####################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
+                # commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                if len(self.path_pairs) == 3:
+                    commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                elif len(self.path_pairs) > 3:
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        if j == 0:
+                            commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                        elif j < (len(_used_blinded_ids) - 1) :
+                            commands += "&& test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                        else:
+                            commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,b_id_multi_key)
+                ############################################################################
                 ####
                 # 3-30-17
                 # add dynamic setting of module
                 commands += "module load {0}\nmodule load {1}\n".format(_samtools, _bcftools)
                 ####
                 # commands += "module load samtools/1.3\nmodule load bcftools/1.3\n"
-                commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                # commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                ############################################################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
+                if len(self.path_pairs) == 3:
+                    commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                
+                elif len(self.path_pairs) > 3:
+                    commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)
+                ##############################################################################
                 commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
 
                 input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)
@@ -295,7 +331,31 @@ class Trio:
                 # commands += "module load plink/1.90b\n"
                 output_file_plink = "{0}/{1}.plink".format(self.output_dir,self.childs_blinded_id)
                 _genders_txt_file = "{0}/{1}.genders.txt".format(self.output_dir,self.childs_blinded_id)
-                commands += "echo \"{0} output/aligned-sorted.{0}.bam {1}\n{0} output/aligned-sorted.{0}-01.bam 2\n{0} output/aligned-sorted.{0}-02.bam 1\" > {2}\n".format(self.childs_blinded_id,_proband_gender,_genders_txt_file)
+                ############################################################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
+                if len(self.path_pairs) == 3:
+                    commands += "echo \"{0} output/aligned-sorted.{0}.bam {1}\n{0} output/aligned-sorted.{0}-01.bam 2\n{0} output/aligned-sorted.{0}-02.bam 1\" > {2}\n".format(self.childs_blinded_id,_proband_gender,_genders_txt_file)
+
+                elif len(self.path_pairs) > 3:
+                    commands += "echo \""
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        if b_id_multi_key.endswith("-01"):
+                            if j < len(_used_blinded_ids) - 1:
+                                commands += "{0} output/aligned-sorted.{1}.bam 2\n".format(self.childs_blinded_id,b_id_multi_key)
+                            else:
+                                commands += "{0} output/aligned-sorted.{1}.bam 2\" > {2}\n".format(self.childs_blinded_id,b_id_multi_key,_genders_txt_file)
+                        elif b_id_multi_key.endswith("-02"):
+                            if j < len(_used_blinded_ids) - 1:
+                                commands += "{0} output/aligned-sorted.{1}.bam 1\n".format(self.childs_blinded_id, b_id_multi_key)
+                            else:
+                                commands += "{0} output/aligned-sorted.{1}.bam 1\" > {2}\n".format(self.childs_blinded_id,b_id_multi_key,_genders_txt_file)
+                        else:
+                            if j < len(_used_blinded_ids) - 1:
+                                commands += "{0} output/aligned-sorted.{1}.bam {2}\n".format(self.childs_blinded_id, b_id_multi_key,_proband_gender)
+                            else:
+                                commands += "{0} output/aligned-sorted.{1}.bam {2}\" > {3}\n".format(self.childs_blinded_id, b_id_multi_key,_proband_gender,_genders_txt_file)
+                ############################################################################
                 commands += "plink --allow-extra-chr --vcf {0} --update-sex {1} --check-sex --make-bed --out {2}\n".format(output_file_filtered_vcf,_genders_txt_file,output_file_plink)
 
                 ##############
@@ -308,8 +368,29 @@ class Trio:
                 # tmp_fam_file = "{0}/tmp_fam.txt".format(self.output_dir)
                 # commands += "cp {0} {1}/{2}\n".format(tmp_fam_file,self.output_dir,plink_fam_file)
                 # comment out echoing of .fam file fixing 4-7-17
-                commands += "echo \"{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\" > {2}.fam\n".format(self.childs_blinded_id,_proband_gender,output_file_plink)
-
+                ############################################################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
+                if len(self.path_pairs) == 3:
+                    commands += "echo \"{0} {0} {0}-01 {0}-02 {1} -9\n{0} {0}-01 0 0 2 -9\n{0} {0}-02 0 0 1 -9\" > {2}.fam\n".format(self.childs_blinded_id,_proband_gender,output_file_plink)
+                elif len(self.path_pairs) > 3:
+                    _proband_mk = filter(lambda x: not x.endswith('-02') and not x.endswith('-01'), _used_blinded_ids)
+                    _mother_mk = filter(lambda x: x.endswith('-01'), _used_blinded_ids)
+                    _father_mk = filter(lambda x: x.endswith('-02'), _used_blinded_ids)
+                    ###################test 7-7-17!!!!!
+                    commands += "echo \"{0} {0} {1} {2} {3} -9\n".format(self.childs_blinded_id,_mother_mk[len(_mother_mk)-1],_father_mk[len(_father_mk)-1],_proband_gender)
+                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
+                        if b_id_multi_key.endswith("-01"):
+                            if j < len(_used_blinded_ids) - 1:
+                                commands += "{0} {1} 0 0 2 -9\n".format(self.childs_blinded_id, b_id_multi_key)
+                            else:
+                                commands += "{0} {1} 0 0 2 -9 > {2}.fam\n".format(self.childs_blinded_id,b_id_multi_key,output_file_plink)
+                        elif b_id_multi_key.endswith("-02"):
+                            if j < len(_used_blinded_ids) - 1:
+                                commands += "{0} {1} 0 0 1 -9\n".format(self.childs_blinded_id, b_id_multi_key)
+                            else:
+                                commands += "{0} {1} 0 0 1 -9 > {2}.fam\n".format(self.childs_blinded_id,b_id_multi_key,output_file_plink)
+                ############################################################################
                 ####
                 # 3-30-17
                 # add dynamic setting of module

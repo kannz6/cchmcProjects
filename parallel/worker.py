@@ -213,12 +213,17 @@ class Trio:
             print "[_in_parallel()] Exception thrown when trying to read loniJobId.txt read\nError: {0}\n".format(readLoniIdFailed)
         ####
         bsubCommand = []
+        ####################################
+        #7-5-17
+        # added _used_blinded_ids variable for multi-key-blinded-id
         _used_blinded_ids = []
         for i, pair in enumerate(self.path_pairs):
             commands = ""
 
             blinded_id = pair[0]['id']
             ####################################
+            #7-5-17
+            # added _used_blinded_ids variable for multi-key-blinded-id
             if len(self.path_pairs) > 3:
                 blinded_id += "-{0}".format(i)
                 _used_blinded_ids.append(blinded_id)
@@ -257,6 +262,9 @@ class Trio:
                 child_id = self.childs_blinded_id
                 mom_id = self.childs_blinded_id + '-01'
                 dad_id = self.childs_blinded_id + '-02'
+                ####################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
                 if len(self.path_pairs) == 3:
                     commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
                 elif len(self.path_pairs) > 3:
@@ -267,12 +275,14 @@ class Trio:
                             commands += "&& test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
                         else:
                             commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,b_id_multi_key)
-
+                ############################################################################
                 ####
                 # 3-30-17
                 # add dynamic setting of module
                 commands += "#module load {0}\nmodule load {1}\n".format(_samtools, _bcftools)
                 ############################################################################
+                #7-5-17
+                # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
                 if len(self.path_pairs) == 3:
                     commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
                 
