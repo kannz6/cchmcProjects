@@ -332,9 +332,9 @@ class vcfToKin0:
 				_moduleLoadCommand += "{0}\n".format("bcftools/1.4")
 
 			if 'htslib' in kwargs.keys():
-				_moduleLoadCommand += "{0}\n".format(kwargs['htslib'])
+				_moduleLoadCommand += "module load {0}\n".format(kwargs['htslib'])
 			else:
-				_moduleLoadCommand += "{0}\n".format("htslib/1.4")
+				_moduleLoadCommand += "module load {0}\n".format("htslib/1.3")
 
 			_bcftool = ""
 			if 'command' in kwargs.keys():
