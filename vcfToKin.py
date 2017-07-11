@@ -311,7 +311,8 @@ class vcfToKin0:
 
 	def createBatchConcordanceFiles(self, **kwargs):
 		####-Params
-		####---{in=<input text file of vcfs to loop through>, -S=<sample-ids txt file>, f1=<file one>, f2=<file two>, out=<full path of output file to write results to>, outDir=<directory to place output files>}
+		####---{in=<input text file of vcfs to loop through>, -S=<sample-ids txt file>, f1=<file one>, f2=<file two>, out=<full path of output file to write results to>, 
+		# command=<stats|gtcheck>,outDir=<directory to place output files>,g=<reference genotypes to compare against>}
 		####---i.e. bcftools stats -S yale-sample-ids.txt ../exome_calls.vcf.gz ../harvard.vcf.gz > concordance-yale-harvard-4-28-17.txt
 		_batchScriptName = "batchConcordanceCreationScript.sh"
 		batchScript = open(_batchScriptName, "w+")
@@ -328,21 +329,39 @@ class vcfToKin0:
 			if 'bcfv' in kwargs.keys():
 				_moduleLoadCommand += "{0}\n".format(kwargs['bcfv'])
 			else:
-				_moduleLoadCommand += "{0}\n".format("bcftools/1.3")
+				_moduleLoadCommand += "{0}\n".format("bcftools/1.4")
+
+			if 'htslib' in kwargs.keys():
+				_moduleLoadCommand += "{0}\n".format(kwargs['htslib'])
+			else:
+				_moduleLoadCommand += "{0}\n".format("htslib/1.4")
+
+			_bcftool = ""
+			if 'command' in kwargs.keys():
+				_bcftool = kwargs['command']
+			else:
+				_bcftool = 'stats'
 
 			if 'xS' in kwargs.keys():
 				_sampleIdFile = kwargs['xS']
-				_concordanceScript += "{0}\nbcftools stats -S ^{1} ".format(_moduleLoadCommand,_sampleIdFile)
+				_concordanceScript += "{0}\nbcftools {1} -S ^{2} ".format(_moduleLoadCommand,_bcftool,_sampleIdFile)
 			elif 'S' in kwargs.keys():
 				_sampleIdFile = kwargs['S']
-				_concordanceScript += "{0}\nbcftools stats -S {1} ".format(_moduleLoadCommand,_sampleIdFile)
+				_concordanceScript += "{0}\nbcftools {1} -S {2} ".format(_moduleLoadCommand,_bcftool,_sampleIdFile)
+			else:
+				_concordanceScript += "{0}\nbcftools {1} ".format(_moduleLoadCommand,_bcftool)
 
-			if 'e' in kwargs.keys():
-				_exclude = kwargs['e']
-				_concordanceScript += "-e \'{0}\' ".format(kwargs['e'])
-			elif 'i' in kwargs.keys():
-				_include = kwargs['i']
-				_concordanceScript += "-i \'{0}\' ".format(kwargs['i'])
+			if 'stats' in _bcftool:
+				if 'e' in kwargs.keys():
+					_exclude = kwargs['e']
+					_concordanceScript += "-e \'{0}\' ".format(kwargs['e'])
+				elif 'i' in kwargs.keys():
+					_include = kwargs['i']
+					_concordanceScript += "-i \'{0}\' ".format(kwargs['i'])
+			elif 'gtcheck' in _bcftool:
+				if 'g' in kwargs.keys():
+					_genotypes = kwargs['g']
+					_concordanceScript += "-g {0} ".format(_genotypes)
 			
 			_file1 = kwargs['f1']; _concordanceScript += "{0} ".format(_file1)
 
@@ -367,8 +386,9 @@ class vcfToKin0:
 					batchScript.write("bsub < {0}/{1} & \nsleep 1".format(_bulkConcordanceScriptsStorageDir,bulkConcordanceFileName))
 					# batchScript.write("bsub < /scratch/kannz6/temp/harvard-vcf/" + bulkConcordanceFileName + " & \nsleep 2\n");#harvard-dir
 
-			elif 'f2' in kwargs.keys():
-				_file2 = kwargs['f2']; _concordanceScript += "{0} ".format(_file2)
+			elif 'f2' in kwargs.keys() or 'gtcheck' in _bcftool:
+				if 'gtcheck' not in _bcftool:
+					_file2 = kwargs['f2']; _concordanceScript += "{0} ".format(_file2)
 				_concordanceResultsFile = "{0}/{1}".format(kwargs['outDir'],"concordance-result.txt"); _concordanceScript += "> {0}\n\nexit\n\n".format(_concordanceResultsFile)
 				bulkConcordanceFileName = "batchConcordanceCreation_1.sh"
 				with open(bulkConcordanceFileName, "w+") as batchFileWriter:
