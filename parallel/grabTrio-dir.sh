@@ -26,6 +26,7 @@ cp temp.txt triosToVerify.txt
 rm temp.txt
 
 sh wrapTriosToPSQL.awk
+
 echo $(basename $2) > out.txt
 dir="$(expr $(basename $2) : '.*-[0-9]\(.*\)')"
 # jid="$(expr ".* $9" : '.* \(.*\)')"#works
@@ -46,6 +47,7 @@ python main.py
 # last=$(cat query_output.dat | awk '{if($1 ~ /-02/){print substr($1,0,7)}}' > last.txt && echo $(tac last.txt | egrep -m 1 .)"_output/"$(tac last.txt | egrep -m 1 .)".king.kin")
 last=$(echo $(tac $2/triosStructure.txt | egrep -m 1 .)"_output/"$(tac $2/triosStructure.txt | egrep -m 1 .)".king.kin")
 echo "$last" >> out.txt
-
-while ( ! ( test -e $last ) ); do sleep 180; done;
+# last=$(echo $(tac 6-8-17-0714/triosStructure.txt | egrep -m 1 .)"_output/"$(tac 6-8-17-0714/triosStructure.txt | egrep -m 1 .)".king.kin")
+# while ( ! ( test -e $last ) ); do sleep 180; done;#7-13-17, commented out to test line 52
+while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;
 

@@ -42,6 +42,10 @@ number_of_operands = 0
 desired_number_of_cores = 10
 desired_memory = 18000
 
+####
+#7-13-17
+path_to_validated_trios_txt_file = "/scratch/kannz6/loni/vcf_pipeline/done.txt"
+
 #####
 # 3-30-17
 # Add dynamic version settings
@@ -331,7 +335,8 @@ class Trio:
                 commands += "#cleanup directory for space management\nrm {0}/*plink*\nrm {0}/*bam\nrm {0}/*.bai\nrm {0}/*.vcf.gz\nrm {0}/*TMP*\nrm {0}/*kingX*\n".format(self.output_dir)         
                 
                 output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,self.childs_blinded_id)
-                commands += "echo \"complete\" > {0}\nkill %1".format(output_job_finshed)
+                # commands += "echo \"complete\" > {0}\nkill %1".format(output_job_finshed)#7-13-17 comment out for test line 335
+                commands += "echo \"complete\" > {0}\necho \"{1}\" >> {2}\nkill %1".format(output_job_finshed,self.childs_blinded_id,path_to_validated_trios_txt_file)
             ####
             #5-2-17
             #add job name of loni job for killing

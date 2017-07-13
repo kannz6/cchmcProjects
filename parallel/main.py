@@ -25,7 +25,22 @@ if __name__ == "__main__":
     # get a set of all blinded ids that are not a father or mother, according to the id convention.
     children = set(filter(lambda x: not x.endswith('-01') and not x.endswith('-02'), all_ids))
     # print "children: %s"%children
+    ##########################################################################
+    #7-13-17
+    try:
+        validatedTriosFilePath = "/scratch/kannz6/loni/vcf_pipeline/done.txt"
+        with open(validatedTriosFilePath, "r") as validatedTriosReader:
+            validatedTriosContent = validatedTriosReader.readlines()
+        validatedTriosContent = [ line.strip() for line in validatedTriosContent ]
 
+        if len(validatedTriosContent) > 1 or (len(validatedTriosContent) == 1 and "1-" in validatedTriosContent[0]):
+            children = list(children)
+            [ children.pop(children.index(x)) for x in validatedTriosContent ]
+            set(children)
+            # sys.exit("{0}".format(validatedTriosContent))
+    except Exception as _no_validated_trios_file_found:
+        pass
+    ###########################################################################
     print "collecting moms..."
     # get a set of all blinded ids of mothers, according to the id convention.
     moms = set(filter(lambda x: x.endswith('-01'), all_ids))
@@ -87,7 +102,7 @@ if __name__ == "__main__":
                     _trio = _trios_slice[0][0]
                 except Exception as _bad_index:
                     break
-                triosUsedChecker.write("\n---------------------\ncount:{0}\n\nslice: {1}\n\n\n_trio: {2}\n\n\n_ids: {3}\n\n{4}".format(_count,str(_trios_slice),_trio,_ids,_ids[len(_ids) - 1][0]))
+                triosUsedChecker.write("\n---------------------\ncount:{0}\n\nslice: {1}\n\n\n_trio: {2}\n\n\n_ids: {3}\n\n{4}".format(_count,str(_trios_slice),_trio,_ids,_ids[len(_ids) -1][0]))
 
                 depp = "{0}_output/{0}-trio-validation-complete.txt".format(_trio[0])
 
@@ -127,9 +142,9 @@ if __name__ == "__main__":
                     y = y + _node_count
                 _count = _count + 1
                 if _count - 1 == 0:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands),_ids[len(_ids) - 1][0]))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),0,_node_count,_loops,depp,str(lsf_job.operands),_ids[len(_ids)-1][0]))
                 else:
-                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands),_ids[len(_ids) - 1 ][0]))
+                    triosUsedChecker.write("\n\nlen(trios): {0}, x: {1}, y: {2}, _loops: {3}, dep: {4}\noperands: {5}\n\n{6}".format(len(trios),x,y,_loops,depp,str(lsf_job.operands),_ids[len(_ids)-1][0]))
 
             triosUsedChecker.close()
     else:
