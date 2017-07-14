@@ -1,9 +1,12 @@
 #!/usr/bin/python
+import fileinput
+import math
 import os
+import random
 import re
 import stat
 import sys
-import fileinput
+
 
 # database connection fields
 
@@ -589,7 +592,25 @@ class vcfToKin0:
 			else:
 				_outputFile = "{0}/filtered-sample-ids.txt".format("temp")
 			updatedSamplesFile = open(_outputFile, "w+")
-			[ updatedSamplesFile.write("{0}\n{0}-01\n{0}-02\n".format(_id)) for _id in inputFileContent ]
+
+			if "subset" not in kwargs.keys():
+				[ updatedSamplesFile.write("{0}\n{0}-01\n{0}-02\n".format(_id)) for _id in inputFileContent ]
+			else:
+				ss = []; children = list(children)
+				if "using-count" not in kwargs["subset"].keys() and "size" not in kwargs["subset"].keys():
+					[ ss.append(children[c]) for c in range(0,len(children),random.randint(1,len(children) - 1)) ]			
+				elif "using-count" in kwargs["subset"].keys() and isinstance(kwargs['subset']['using-count'],int):
+					[ ss.append(children[c]) for c in range(0,len(children),int(kwargs['subset']['using-count'])) ]
+				elif "size" in kwargs["subset"].keys() and isinstance(kwargs['subset']['size'],int) and kwargs['subset']['size'] <= len(inputFileContent) - 1:				
+					[ ss.append(children[random.randint(0,len(children)-1)]) for c in range(0,len(children)) if len(ss) * 3 <= kwargs['subset']['size'] and children[random.randint(0,len(children)-1)] not in ss]
+
+				inputFileContent = filter(lambda x: x + '-01' in moms and x + '-02' in dads, ss);
+
+				if "sort" in kwargs['subset'].keys() and kwargs['subset']['sort'] is True:
+					inputFileContent.sort()
+
+				[ updatedSamplesFile.write("{0}\n{0}-01\n{0}-02\n".format(_id)) for _id in inputFileContent ]
+
 			updatedSamplesFile.close()
 			
 			# vals = {"s":"5-25-17-refilterVcf/sample_ids.txt","d":"5-25-17-refilterVcf"}
