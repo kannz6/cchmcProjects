@@ -190,6 +190,68 @@ class Trio:
     def _bsub_script_wrap_loni_job(self, W, M, n, J,span, command):
         return "#!/bin/bash\n#BSUB -W %s\n#BSUB -M %s\n#BSUB -n %s\n#BSUB -J %s\n#BSUB -R \"span[%s]\"\n\n%s\n\nexit"%(W, M, n, J,span, command)
 
+    def _skip_step_check(self,**kwargs):
+        # _ret = "test -e -name {0} | test -z && existingFile=$(find . -name {0} -print | egrep -m 1 . ) && test -n $existingFile && cp $existingFile {0} ||".format(f)
+        if not kwargs or "check" not in kwargs.keys():
+            sys.exit("Bad call to this method! Must at least supply kwarg 'check'...")
+        else:
+            if "check" in kwargs.keys():
+
+                _find_command = ""
+                if "size" not in kwargs.keys():
+                    _find_command += "find /scratch/kannz6 -name"
+                else:
+                    if "fs" not in kwargs['size'].keys():
+                        _find_command += "find /scratch/kannz6 -name"
+                    elif "gt" in kwargs['size'].keys() and kwargs['size']['gt'] is True:
+                        _find_command += "find /scratch/kannz6 -size +{0} -name".format(kwargs['size']['fs'])
+                    elif "gt" in kwargs['size'].keys() and kwargs['size']['gt'] is False:
+                        _find_command += "find /scratch/kannz6 -size -{0} -name".format(kwargs['size']['fs'])
+
+                if isinstance(kwargs['check'],list):
+                    _ret = "\n( "
+                    for lc,cfe in enumerate(kwargs['check']):
+                        if lc < len(kwargs['check']) - 1:
+                            _ret += "( ! test -e {0} ) && ".format(cfe)
+                        else:
+                            _ret += "( ! test -e {0} )".format(cfe)
+                    _ret += " ) && while ( "
+
+                    if "skip-root-directory-check" not in kwargs.keys():
+                        kwargs['check'].reverse()
+                        for lc,cfe in enumerate(kwargs['check']):
+                            if lc < len(kwargs['check']) - 1:
+                                _ret += "( ! test -e {0} ) && ".format(cfe)
+                            else:
+                                _ret += "( ! test -e {0} ) ); do ".format(cfe)
+
+                        for lc,cfe in enumerate(kwargs['check']):
+                            if lc < len(kwargs['check']) - 1:
+                                _ret += "existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -e $existingFile && test -s $existingFile ) && cp $(dirname $existingFile)/$(basename {1}) {1} || ".format(_find_command,cfe)
+                            else:
+                                _ret += "existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -e $existingFile && test -s $existingFile ) && cp $(dirname $existingFile)/$(basename {1}) {1} ".format(_find_command,cfe)
+                        _ret +=  "|| break; done &&"
+                    else:
+                        _ret += "&&"
+                else:
+                    _ret = "\n( ! test -e {0} ) ".format(kwargs['check'])
+                    if "skip-root-directory-check" not in kwargs.keys():
+                        if "size" not in kwargs.keys():
+                            _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && ".format(_find_command,kwargs['check'])
+                            if "file-to-copy" in kwargs.keys():
+                                _ret += "cp $(dirname $existingFile)/$(basename {0}) {0} ||".format(kwargs['file-to-copy'])
+                            else:
+                                _ret += "cp $existingFile {0} ||".format(kwargs['check'])
+
+                        else:
+                            if "file-to-copy" in kwargs.keys():
+                                _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && cp $existingFile {1} ||".format(_find_command,kwargs['file-to-copy'])
+                            else:
+                                _ret += "cp $existingFile {0} ||".format(kwargs['check'])
+                    else:
+                        _ret += "&&"
+                return _ret
+
     def _in_parallel(self):
         ####
         #4-27-17
@@ -234,29 +296,52 @@ class Trio:
             ####################################
             P1_path = os.path.join(config.BASE_PATH, pair[0]['path'][1:] if pair[0]['path'].startswith("/") else pair[0]['path'])
             P2_path = os.path.join(config.BASE_PATH, pair[1]['path'][1:] if pair[0]['path'].startswith("/") else pair[1]['path'])
+            ####################################
+            #Output Files
             output_path_sam = "{0}/aligned.{1}.sam".format(self.output_dir, blinded_id)
+            output_path_bam = "{0}/aligned.{1}.bam".format(self.output_dir,blinded_id)
+            output_path_sort = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,blinded_id)
+            output_path_sort_index = "{0}/aligned-sorted.{1}.bam.bai".format(self.output_dir,blinded_id)
+            output_file_finshed = "{0}/{1}-done.txt".format(self.output_dir,blinded_id)
+            input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)
+            completed_mpileup = "{0}/completed-{1}-mpileup.txt".format(self.output_dir,self.childs_blinded_id)
+            output_file_filtered_vcf = "{0}/{1}-filtered.vcf".format(self.output_dir,self.childs_blinded_id)
+            completed_filtered_vcf = "{0}/completed-{1}-vcf-filter.txt".format(self.output_dir,self.childs_blinded_id)
+            ####################################
             commands += "cd {0}\n".format(self.home_directory)        
             ####
             # 3-30-17
             # add dynamic setting of module
             if loniJob:
                 commands += "{0}\n{1}\n".format(_initial_parent_status_check,_kill_job_command)
-            
-            commands += "module load {0}\nbwa mem -t 8 {1} {2} {3} > {4}\n".format(_bwa,config.REF_FILE,P1_path,P2_path,output_path_sam)
+            #7-18-17
+            # commands += "module load {0}\nbwa mem -t 8 {1} {2} {3} > {4}\n".format(_bwa,config.REF_FILE,P1_path,P2_path,output_path_sam)
+            #add file exist check for file from next step, if it exists, skip this step
+            _check_file_exists = self._skip_step_check(**{"check":[output_path_bam,output_path_sort]})
+            commands += "module load {0}\n{1} bwa mem -t 8 {2} {3} {4} > {5}\n".format(_bwa,_check_file_exists,config.REF_FILE,P1_path,P2_path,output_path_sam)#add 7-18-17
             commands += "module load {0}\n".format(_samtools)
             ####
-            output_path_bam = "{0}/aligned.{1}.bam".format(self.output_dir,blinded_id)
-            commands += "samtools view -Sb {0} > {1}\n".format(output_path_sam,output_path_bam)
-
+            # output_path_bam = "{0}/aligned.{1}.bam".format(self.output_dir,blinded_id)#comment out 7-18-17
+            # commands += "samtools view -Sb {0} > {1}\n".format(output_path_sam,output_path_bam)#comment out 7-18-17
+            #7-18-17
+            #add file exist check for file from next step, if it exists, skip this step
+            _check_file_exists = self._skip_step_check(**{"check":output_path_sort})#add 7-18-17
+            commands += "{0} samtools view -Sb {1} > {2}\n".format(_check_file_exists,output_path_sam,output_path_bam)#add 7-18-17
             ####3-20-17
-            commands += "rm {0}\n".format(output_path_sam)
+            # commands += "rm {0}\n".format(output_path_sam)
+            commands += "test -e {0} && rm {0}\n".format(output_path_sam)
             ####
-            output_path_sort = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,blinded_id)
-            commands += "samtools sort -o {0} {1}\n".format(output_path_sort,output_path_bam)
+            # output_path_sort = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,blinded_id)#comment out 7-18-17
+            _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index})#add 7-18-17
+            # commands += "samtools sort -o {0} {1}\n".format(output_path_sort,output_path_bam)#comment out 7-18-17
+            commands += "{0} samtools sort -o {1} {2}\n".format(_check_file_exists,output_path_sort,output_path_bam)#comment out 7-18-17
+            #7-18-17
+            #add file exist check for file from next step, if it exists, skip this step
+            # commands += "samtools index {0}\n".format(output_path_sort)#comment out 7-18-17
+            _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index,"skip-root-directory-check":True})#add 7-18-17
+            commands += "{0} samtools index {1}\n".format(_check_file_exists,output_path_sort)#add 7-18-17
 
-            commands += "samtools index {0}\n".format(output_path_sort)
-
-            output_file_finshed = "{0}/{1}-done.txt".format(self.output_dir,blinded_id)
+            # output_file_finshed = "{0}/{1}-done.txt".format(self.output_dir,blinded_id)#comment out 7-18-17
             commands += "echo \"complete\" > {0}".format(output_file_finshed)
             
             ####3-20-17
@@ -288,22 +373,31 @@ class Trio:
                 #7-5-17
                 # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
                 if len(self.path_pairs) == 3:
-                    commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
-                
+                    # commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)#comment out 7-18-17
+                    _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
+                    commands += "{0} samtools mpileup -t AD -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+
                 elif len(self.path_pairs) > 3:
-                    commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)
+                    # commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)#comment out 7-18-17
+                    _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
+                    commands += "{0} samtools mpileup -t AD -uf {1}".format(_check_file_exists,config.REF_FILE)#comment out 7-18-17
                     for j,b_id_multi_key in enumerate(_used_blinded_ids):
                         commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)
                 ##############################################################################
-                commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
+                commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz && echo \"mpileup for {1} finished.\" > {2}\n".format(self.output_dir,self.childs_blinded_id,completed_mpileup)
 
-                input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)
-                output_file_filtered_vcf = "{0}/{1}-filtered.vcf".format(self.output_dir,self.childs_blinded_id)
+                # input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)#comment out 7-18-17
+                # output_file_filtered_vcf = "{0}/{1}-filtered.vcf".format(self.output_dir,self.childs_blinded_id)#comment out 7-18-17
+                
                 # 4-12-17
                 #added pipe to bcftools view command
-                commands += "bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {0} | bcftools view -m2 -M2 -v snps > {1}\n".format(input_file_vcf, output_file_filtered_vcf)
+                _check_file_exists = self._skip_step_check(**{"check":completed_filtered_vcf, "file-to-copy": output_file_filtered_vcf,"size":{"gt":True,"fs":"15M"}})#add 7-18-17
+                # commands += "bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {0} | bcftools view -m2 -M2 -v snps > {1}\n".format(input_file_vcf, output_file_filtered_vcf)#comment out 7-18-17
+                commands += "{0} bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {1} | bcftools view -m2 -M2 -v snps > {2} && echo \"{3}'s vcf file has been filtered.\" > {4}\n\n".format(_check_file_exists,input_file_vcf,output_file_filtered_vcf,self.childs_blinded_id,completed_filtered_vcf)
                 # commands += "bcftools view -m2 -M2 -v snps {0} > {1}\n".format(tmp_filtered_vcf, output_file_filtered_vcf)
-                commands += "rm {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
+                # commands += "rm {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
+                commands += "test -e {0}/{1}.vcf.gz && rm {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
+
 
                 ####
                 # 3-30-17
