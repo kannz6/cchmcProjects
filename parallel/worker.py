@@ -74,6 +74,26 @@ def setCores(v):
 
 x = 0
 ########
+#################################################################################
+#8-2-17
+doneFileNames = [];
+curretDirectoryFiles = [];
+def joinPaths ( rt, fname ):
+    filepath = os.path.join( rt, fname )
+    doneFileNames.append( fname )  # Add it to the list.
+
+def getFileNames( directory ):
+    """
+    This function will generate the file names in a directory 
+    tree by walking the tree either top-down or bottom-up. For each 
+    directory in the tree rooted at directory top (including top itself), 
+    it yields a 3-tuple (dirpath, dirnames, filenames).
+    """
+    # Walk the tree.
+    [ ([joinPaths(root, f) for f in files],[ curretDirectoryFiles.append(d) for d in directories]) for root, directories, files in os.walk( directory ) ]
+
+    return doneFileNames  # Self-explanatory.
+#################################################################################
 
 class Trio:
     def __init__(self, path_records):
@@ -237,15 +257,21 @@ class Trio:
                     _ret = "\n( ! test -e {0} ) ".format(kwargs['check'])
                     if "skip-root-directory-check" not in kwargs.keys():
                         if "size" not in kwargs.keys():
-                            _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && ".format(_find_command,kwargs['check'])
+                                                       
                             if "file-to-copy" in kwargs.keys():
-                                _ret += "cp $(dirname $existingFile)/$(basename {0}) {0} ||".format(kwargs['file-to-copy'])
+                                _ret += "&& test -e $({0} $(basename {1}) -print | egrep -m 1 . ) ".format(_find_command,kwargs['file-to-copy'])
+                                _ret += "&& possibleUseableFileDirectory=$(dirname $({0} $(basename {1} -print | egrep -m 1 . ))) && test -e $possibleUseableFileDirectory/{2} ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
+                                _ret += "&& existingFile=$possibleUseableFileDirectory/{0} && cp $existingFile {0} ||".format(kwargs['file-to-copy'])
                             else:
+                                _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && ".format(_find_command,kwargs['check'])
                                 _ret += "cp $existingFile {0} ||".format(kwargs['check'])
 
                         else:
                             if "file-to-copy" in kwargs.keys():
-                                _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && cp $existingFile {1} ||".format(_find_command,kwargs['file-to-copy'])
+                                # _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && cp $existingFile {1} ||".format(_find_command,kwargs['file-to-copy'])
+                                _ret += "&& test -e $({0} $(basename {1}) -print | egrep -m 1 . ) ".format(_find_command,kwargs['file-to-copy'])
+                                _ret += "&& possibleUseableFileDirectory=$(dirname $({0} $(basename {1} -print | egrep -m 1 . ))) && test -e $possibleUseableFileDirectory/{2} ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
+                                _ret += "&& existingFile=$possibleUseableFileDirectory/{0} && cp $existingFile {0} ||".format(kwargs['file-to-copy'])
                             else:
                                 _ret += "cp $existingFile {0} ||".format(kwargs['check'])
                     else:
@@ -375,14 +401,33 @@ class Trio:
                 if len(self.path_pairs) == 3:
                     # commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)#comment out 7-18-17
                     _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
-                    commands += "{0} samtools mpileup -t AD -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                    commands += "{0} samtools mpileup -t AD -C50 -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
 
                 elif len(self.path_pairs) > 3:
-                    # commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)#comment out 7-18-17
+                    ############################################################################
+                    #8-2-17
+                    filesDict = {};
+                    multi_bam_files_in_cwd = getFileNames( "{0}/{1}".format(self.home_directory,self.output_dir) )
+                    listOfBamFileNames = filter( (lambda x : re.match( r'.*aligned-sorted.*bam$', x) ), multi_bam_files_in_cwd )
+                    [ filesDict.update({x.split(".")[1][0:7]:x.split(".")[1]+":"+x}) if x.split(".")[1].count("-") == 2  else filesDict.update({x.split(".")[1][0:10]:x.split(".")[1]+":"+x}) for x in listOfBamFileNames if ( len(x.split(".")[1]) == 9 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:7]) ) or ( len(x.split(".")[1]) == 12 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:10]))]
                     _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
-                    commands += "{0} samtools mpileup -t AD -uf {1}".format(_check_file_exists,config.REF_FILE)#comment out 7-18-17
-                    for j,b_id_multi_key in enumerate(_used_blinded_ids):
-                        commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)
+                    
+                    for k,v in filesDict:#comment out 8-2-17
+                        _renamed_multikey_sorted_bam_file = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,k)
+                        commands += "mv {0} {1}/aligned-sorted.{2}.bam\n".format(v.split(":")[1],self.output_dir,k)
+                        filesDict.update({k:_renamed_multikey_sorted_bam_file})
+
+                    commands += "{0} samtools mpileup -t AD -C50 -uf {1}".format(_check_file_exists,config.REF_FILE)#add 8-2-17
+                        
+                    for k,v in filesDict:#add 8-2-17
+                        commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, v)#add 8-2-17
+                    ############################################################################
+
+                    # commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)#comment out 7-18-17
+                    # _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#comment out 8-2-17
+                    # commands += "{0} samtools mpileup -t AD -uf {1}".format(_check_file_exists,config.REF_FILE)#comment out 8-2-17
+                    # for j,b_id_multi_key in enumerate(_used_blinded_ids):#comment out 8-2-17
+                    #     commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)#comment out 8-2-17
                 ##############################################################################
                 commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz && echo \"mpileup for {1} finished.\" > {2}\n".format(self.output_dir,self.childs_blinded_id,completed_mpileup)
 

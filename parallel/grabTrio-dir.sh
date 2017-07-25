@@ -2,7 +2,7 @@
 
 # jobid=$(bjobs | grep $(date | awk '{print substr($4, 0, 5)}') | awk '{print $1}')
 cd /scratch/kannz6/loni/vcf_pipeline/pipeline
-mkdir $2
+! test -d $2 && mkdir $2
 
 cp * $2
 cd $2
@@ -47,7 +47,87 @@ python main.py
 # last=$(cat query_output.dat | awk '{if($1 ~ /-02/){print substr($1,0,7)}}' > last.txt && echo $(tac last.txt | egrep -m 1 .)"_output/"$(tac last.txt | egrep -m 1 .)".king.kin")
 last=$(echo $(tac $2/triosStructure.txt | egrep -m 1 .)"_output/"$(tac $2/triosStructure.txt | egrep -m 1 .)".king.kin")
 echo "$last" >> out.txt
-# last=$(echo $(tac 6-8-17-0714/triosStructure.txt | egrep -m 1 .)"_output/"$(tac 6-8-17-0714/triosStructure.txt | egrep -m 1 .)".king.kin")
 # while ( ! ( test -e $last ) ); do sleep 180; done;#7-13-17, commented out to test line 52
-while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;
+# while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;#comment out 7-25-17
+#testing this loni job exit 7-25-17
+( test -e "triosLength.txt") && expecting=$( cat triosLength.txt | awk '{print $1}') || [ $( cat triosToVerify.txt | egrep -m 1 .) == "%" ] && scenario=1 || scenario=3
 
+echo "$scenario" > scenario.txt
+echo "expecting: $expecting trios to be validated" >> scenario.txt
+
+# while true; do [ $(date | awk '{print substr($4,4,2)}') == "44" ] && break || echo "still clocking..." && sleep 1; done
+# while true; do [ $(date | awk '{print substr($4,0,5)}') == $(echo $oneMinTest | awk '{print substr($4,0,5)}') ] && break || echo "still clocking..." && sleep 1; done
+case $scenario in
+	1)
+	actual=$(awk 'BEGIN{print "0"}')
+	if test -n $expecting
+	then
+		while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" && ! ( test $expecting -eq $actual ) )
+		do 
+
+			if test -z $(find -type f -name "*trio-validation-complete.txt" | tac | egrep -m 1 . | awk '{print $1}')
+			then
+				actual=$(awk 'BEGIN{print "0"}') 
+			else
+				actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
+			fi
+
+			if test $actual -eq $expecting
+			then 
+				break
+			else 
+				sleep 180
+			fi
+		done
+	else
+		while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) )
+	 	do 
+	 		sleep 180
+		done
+	fi
+	;;
+	2)
+	( test -e "triosLength.txt") && expecting=$( cat triosLength.txt | awk '{print $1}') || expecting=$(wc -l triosToVerify.txt | awk '{print $1}')
+	while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" )
+	do 
+		actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
+		if test $actual -eq $expecting
+		then 
+			break
+		else 
+			sleep 180
+		fi
+	done
+	;;
+	# https://stackoverflow.com/questions/27555727/timeouting-a-while-loop-in-linux-bash-one-line-shell-scripting
+	# https://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
+	# timeout 2m bash -c -- 'while true; do echo "hello world"; sleep 3; done' (local working example)
+	#this is case 1, but rewritten with a timeout command
+	3)
+	actual=$(awk 'BEGIN{print "0"}')
+	if test -n $expecting
+	then
+		timeout 1d bash -c -- 'while ( test -n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting -eq $actual ) )
+		do 
+			if test -z $(find -type f -name "*trio-validation-complete.txt" | tac | egrep -m 1 . | awk '"'"'{print $1}'"'"')
+			then
+				actual=$(awk '"'"'BEGIN{print "0"}'"'"')
+			else
+				actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '"'"'{print $1}'"'"')
+			fi
+
+			if test $actual -eq $expecting
+			then 
+				break
+			else 
+				sleep 180
+			fi
+		done'
+	fi
+	;;
+esac
+	
+
+# expecting=$(wc -l triosToVerify.txt | awk '{print $1}')
+# actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
+# while ( ( test -n "$(find -type f -name "*.bam" | cat | egrep -m 1 .)" ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;

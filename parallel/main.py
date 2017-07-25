@@ -34,10 +34,9 @@ if __name__ == "__main__":
         validatedTriosContent = [ line.strip() for line in validatedTriosContent ]
 
         if len(validatedTriosContent) > 1 or (len(validatedTriosContent) == 1 and "1-" in validatedTriosContent[0]):
-            children = list(children)
-            [ children.pop(children.index(x)) for x in validatedTriosContent ]
+            children = list(children); 
+            children = [ x for x in children if x not in validatedTriosContent ]
             set(children)
-            # sys.exit("{0}".format(validatedTriosContent))
     except Exception as _no_validated_trios_file_found:
         pass
     ###########################################################################
@@ -58,6 +57,7 @@ if __name__ == "__main__":
     print "collecting trios..."
     # get the ids and file paths for the known trios.
     trios = [filter(lambda x: x[0] in (ID,ID+'-01',ID+'-02'),ids_and_paths) for ID in trio_children]
+
     triosUsedChecker = open("triosStructure.txt", "w+")
     triosUsedChecker.write(str(trios))
 
@@ -85,6 +85,10 @@ if __name__ == "__main__":
             _count = 0
             n = 0
             triosUsedChecker.write("\n\n[lsf_jobs]\n")
+            
+            with open("triosLength.txt", "w+") as triosLengthWriter:
+                triosLengthWriter.write(str(len(trios)))
+
             while _count != _loops:
                 if _count == 0:
                     _trios_slice = trios[x:y]
@@ -148,8 +152,16 @@ if __name__ == "__main__":
 
             triosUsedChecker.close()
     else:
+        if len(trios) >= 1:
+            triosUsedChecker.write("\n\ninside else\n\n{0}\n\n{1}".format(len(trios),trios[len(trios)-1][0][0]))
+        triosUsedChecker.close()
+
+        with open("triosLength.txt", "w+") as triosLengthWriter:
+            triosLengthWriter.write(str(len(trios)))
+
+        # sys.exit("largest list: {0}".format(max(trios,key=len)))
         trios = [pickle.dumps(trio) for trio in trios]#moved here 5-25-17
-        triosUsedChecker.write("\n\ninside else".format(len(trios)))
+        # triosUsedChecker.write("\n\ninside else".format(len(trios)))
         lsf_job = LSF.LSFjob(worker_script='worker.py',
                          operands=trios,
                          node_count=len(trios),
