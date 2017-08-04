@@ -6,6 +6,7 @@ import pickle
 import shutil
 import sys
 import os
+import re
 ####3-17-17
 from os import getpid, path
 import versionSettings
@@ -73,26 +74,7 @@ def setCores(v):
         return 8
 
 x = 0
-########
-#################################################################################
-#8-2-17
-doneFileNames = [];
-curretDirectoryFiles = [];
-def joinPaths ( rt, fname ):
-    filepath = os.path.join( rt, fname )
-    doneFileNames.append( fname )  # Add it to the list.
 
-def getFileNames( directory ):
-    """
-    This function will generate the file names in a directory 
-    tree by walking the tree either top-down or bottom-up. For each 
-    directory in the tree rooted at directory top (including top itself), 
-    it yields a 3-tuple (dirpath, dirnames, filenames).
-    """
-    # Walk the tree.
-    [ ([joinPaths(root, f) for f in files],[ curretDirectoryFiles.append(d) for d in directories]) for root, directories, files in os.walk( directory ) ]
-
-    return doneFileNames  # Self-explanatory.
 #################################################################################
 
 class Trio:
@@ -210,6 +192,32 @@ class Trio:
     def _bsub_script_wrap_loni_job(self, W, M, n, J,span, command):
         return "#!/bin/bash\n#BSUB -W %s\n#BSUB -M %s\n#BSUB -n %s\n#BSUB -J %s\n#BSUB -R \"span[%s]\"\n\n%s\n\nexit"%(W, M, n, J,span, command)
 
+    ####################################
+    #8-3-17
+    def _case_wrap(self,**kwargs):
+        if kwargs:
+            ret = ""
+            if "id" not in kwargs.keys() or "finished-file" not in kwargs.keys() or "c-1" not in kwargs.keys():
+                return "***must pass 'id', 'c-1' and 'finished-file' in kwargs dictionary"
+            
+            else:
+                ret += "\ntest -e {0} && c=1 || c=0\n\n".format(kwargs['finished-file'])
+                ret += "case $c in\n\t"
+                ret += "0)\n\t"
+                ret += "{0}\n\t;;\n\t".format(kwargs['c-1'])
+                ret += "1)\n\t"
+
+                if "c-2" not in kwargs.keys():
+                    ret += "\n\t;;\n"
+                else:
+                    ret += "{0}\n\t;;\n".format(kwargs['c-2'])
+                ret += "esac\n\nkill %1\n\n"
+                
+                return ret
+
+        else:
+            return "invalid use of _case_wrap method!"         
+
     def _skip_step_check(self,**kwargs):
         # _ret = "test -e -name {0} | test -z && existingFile=$(find . -name {0} -print | egrep -m 1 . ) && test -n $existingFile && cp $existingFile {0} ||".format(f)
         if not kwargs or "check" not in kwargs.keys():
@@ -229,7 +237,7 @@ class Trio:
                         _find_command += "find /scratch/kannz6 -size -{0} -name".format(kwargs['size']['fs'])
 
                 if isinstance(kwargs['check'],list):
-                    _ret = "\n( "
+                    _ret = "\n\t( "
                     for lc,cfe in enumerate(kwargs['check']):
                         if lc < len(kwargs['check']) - 1:
                             _ret += "( ! test -e {0} ) && ".format(cfe)
@@ -254,7 +262,7 @@ class Trio:
                     else:
                         _ret += "&&"
                 else:
-                    _ret = "\n( ! test -e {0} ) ".format(kwargs['check'])
+                    _ret = "\n\t( ! test -e {0} ) ".format(kwargs['check'])
                     if "skip-root-directory-check" not in kwargs.keys():
                         if "size" not in kwargs.keys():
                                                        
@@ -333,46 +341,52 @@ class Trio:
             completed_mpileup = "{0}/completed-{1}-mpileup.txt".format(self.output_dir,self.childs_blinded_id)
             output_file_filtered_vcf = "{0}/{1}-filtered.vcf".format(self.output_dir,self.childs_blinded_id)
             completed_filtered_vcf = "{0}/completed-{1}-vcf-filter.txt".format(self.output_dir,self.childs_blinded_id)
+
             ####################################
-            commands += "cd {0}\n".format(self.home_directory)        
+            commands += "cd {0}\n\t".format(self.home_directory)        
             ####
             # 3-30-17
             # add dynamic setting of module
             if loniJob:
-                commands += "{0}\n{1}\n".format(_initial_parent_status_check,_kill_job_command)
+                commands += "{0}\n\t{1}\n\t".format(_initial_parent_status_check,_kill_job_command)
             #7-18-17
             # commands += "module load {0}\nbwa mem -t 8 {1} {2} {3} > {4}\n".format(_bwa,config.REF_FILE,P1_path,P2_path,output_path_sam)
             #add file exist check for file from next step, if it exists, skip this step
-            _check_file_exists = self._skip_step_check(**{"check":[output_path_bam,output_path_sort]})
-            commands += "module load {0}\n{1} bwa mem -t 8 {2} {3} {4} > {5}\n".format(_bwa,_check_file_exists,config.REF_FILE,P1_path,P2_path,output_path_sam)#add 7-18-17
-            commands += "module load {0}\n".format(_samtools)
+            _check_file_exists = self._skip_step_check(**{"check":output_path_bam, "file-to-copy":output_path_sam})
+            _if_file_exists = self._skip_step_check(**{"check":output_path_sort, "file-to-copy":output_path_bam})
+            commands += "module load {0}\n\t{1} {2} bwa mem -t 8 {3} {4} {5} > {6}\n\t".format(_bwa,_check_file_exists,_if_file_exists,config.REF_FILE,P1_path,P2_path,output_path_sam)#add 7-18-17
+            commands += "module load {0}\n\t".format(_samtools)
             ####
             # output_path_bam = "{0}/aligned.{1}.bam".format(self.output_dir,blinded_id)#comment out 7-18-17
             # commands += "samtools view -Sb {0} > {1}\n".format(output_path_sam,output_path_bam)#comment out 7-18-17
             #7-18-17
             #add file exist check for file from next step, if it exists, skip this step
-            _check_file_exists = self._skip_step_check(**{"check":output_path_sort})#add 7-18-17
-            commands += "{0} samtools view -Sb {1} > {2}\n".format(_check_file_exists,output_path_sam,output_path_bam)#add 7-18-17
+            _check_file_exists = self._skip_step_check(**{"check":output_path_sort,"file-to-copy":output_path_bam})#add 7-18-17
+            _if_file_exists = self._skip_step_check(**{"check":output_path_sort_index, "file-to-copy":output_path_sort})
+            commands += "{0} {1} samtools view -Sb {2} > {3}\n\t".format(_check_file_exists,_if_file_exists,output_path_sam,output_path_bam)#add 7-18-17
             ####3-20-17
             # commands += "rm {0}\n".format(output_path_sam)
-            commands += "test -e {0} && rm {0}\n".format(output_path_sam)
+            commands += "test -e {0} && rm {0}\n\t".format(output_path_sam)
             ####
             # output_path_sort = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,blinded_id)#comment out 7-18-17
-            _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index})#add 7-18-17
+            _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index,"file-to-copy":output_path_sort})#add 7-18-17
+            _if_file_exists = self._skip_step_check(**{"check":output_file_finshed, "file-to-copy":output_path_sort_index})
             # commands += "samtools sort -o {0} {1}\n".format(output_path_sort,output_path_bam)#comment out 7-18-17
-            commands += "{0} samtools sort -o {1} {2}\n".format(_check_file_exists,output_path_sort,output_path_bam)#comment out 7-18-17
+            commands += "{0} {1} samtools sort -o {2} {3}\n\t".format(_check_file_exists,_if_file_exists,output_path_sam,output_path_sort,output_path_bam)#comment out 7-18-17
             #7-18-17
             #add file exist check for file from next step, if it exists, skip this step
             # commands += "samtools index {0}\n".format(output_path_sort)#comment out 7-18-17
             _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index,"skip-root-directory-check":True})#add 7-18-17
-            commands += "{0} samtools index {1}\n".format(_check_file_exists,output_path_sort)#add 7-18-17
+            commands += "{0} samtools index {1}\n\t".format(_check_file_exists,output_path_sort)#add 7-18-17
 
             # output_file_finshed = "{0}/{1}-done.txt".format(self.output_dir,blinded_id)#comment out 7-18-17
             commands += "echo \"complete\" > {0}".format(output_file_finshed)
-            
+
             ####3-20-17
             if ( i < len(self.path_pairs) - 1):
-                commands += "\nkill %1"
+                wrap_case_dict = {"id":blinded_id,"finished-file":output_file_finshed,"c-1":commands}
+                commands = self._case_wrap(**wrap_case_dict)
+                # commands += "\nkill %1"#comment out 8-3-17 for test of case wrapper#stopped here 9:27
             elif( i == len(self.path_pairs) - 1):
                 child_id = self.childs_blinded_id
                 mom_id = self.childs_blinded_id + '-01'
@@ -381,20 +395,38 @@ class Trio:
                 #7-5-17
                 # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
                 if len(self.path_pairs) == 3:
-                    commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,child_id, mom_id, dad_id)
+                    commands += "\n\twhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,child_id, mom_id, dad_id)
+                    commands2 = "\n\twhile ! (test -e \"{0}/{1}-done.txt\" && test -e \"{0}/{2}-done.txt\" && test -e \"{0}/{3}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,child_id, mom_id, dad_id)
                 elif len(self.path_pairs) > 3:
+
+                    commands2 = ""
                     for j,b_id_multi_key in enumerate(_used_blinded_ids):
                         if j == 0:
-                            commands += "\nwhile ! (test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                            commands += "\n\twhile ! (test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                            commands2 += "\n\twhile ! (test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
                         elif j < (len(_used_blinded_ids) - 1) :
                             commands += "&& test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
+                            commands2 += "&& test -e \"{0}/{1}-done.txt\" ".format(self.output_dir,b_id_multi_key)
                         else:
-                            commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n".format(self.output_dir,b_id_multi_key)
+                            commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,b_id_multi_key)
+                            commands2 += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,b_id_multi_key)
+                            _rename_multi_key_python_script = "multiKeyBlindedIdFileFileRename.py"
+                            commands += "cp multiKeyBlindedIdFileFileRename.py {0}\n\t".format(self.output_dir)
+                            commands += "cd {0}\n\t".format(self.output_dir)
+                            commands += "./multiKeyBlindedIdFileFileRename.py\n\t"
+                            commands += "bsub < renameBam.sh\n\t"
+                            commands += "cd ..\n\t"
+                            commands2 += "cp multiKeyBlindedIdFileFileRename.py {0}\n\t".format(self.output_dir)
+                            commands2 += "cd {0}\n\t".format(self.output_dir)
+                            commands2 += "./multiKeyBlindedIdFileFileRename.py\n\t"
+                            commands2 += "bsub < renameBam.sh\n\t"
+                            commands2 += "cd ..\n\t"
                 ############################################################################
                 ####
                 # 3-30-17
                 # add dynamic setting of module
-                commands += "#module load {0}\nmodule load {1}\n".format(_samtools, _bcftools)
+                commands += "#module load {0}\n\tmodule load {1}\n\t".format(_samtools, _bcftools)
+                commands2 += "#module load {0}\n\tmodule load {1}\n\t".format(_samtools, _bcftools)
                 ############################################################################
                 #7-5-17
                 # added _used_blinded_ids variable and if-elif logic for handling multi-key-blinded-id 
@@ -402,34 +434,29 @@ class Trio:
                     # commands += "samtools mpileup -t AD -uf {0} {1}/aligned-sorted.{2}.bam {1}/aligned-sorted.{3}.bam {1}/aligned-sorted.{4}.bam".format(config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)#comment out 7-18-17
                     _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
                     commands += "{0} samtools mpileup -t AD -C50 -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                    commands2 += "{0} samtools mpileup -t AD -C50 -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
 
                 elif len(self.path_pairs) > 3:
                     ############################################################################
                     #8-2-17
-                    filesDict = {};
-                    multi_bam_files_in_cwd = getFileNames( "{0}/{1}".format(self.home_directory,self.output_dir) )
-                    listOfBamFileNames = filter( (lambda x : re.match( r'.*aligned-sorted.*bam$', x) ), multi_bam_files_in_cwd )
-                    [ filesDict.update({x.split(".")[1][0:7]:x.split(".")[1]+":"+x}) if x.split(".")[1].count("-") == 2  else filesDict.update({x.split(".")[1][0:10]:x.split(".")[1]+":"+x}) for x in listOfBamFileNames if ( len(x.split(".")[1]) == 9 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:7]) ) or ( len(x.split(".")[1]) == 12 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:10]))]
                     _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#add 7-18-17
-                    
-                    for k,v in filesDict:#comment out 8-2-17
-                        _renamed_multikey_sorted_bam_file = "{0}/aligned-sorted.{1}.bam".format(self.output_dir,k)
-                        commands += "mv {0} {1}/aligned-sorted.{2}.bam\n".format(v.split(":")[1],self.output_dir,k)
-                        filesDict.update({k:_renamed_multikey_sorted_bam_file})
 
-                    commands += "{0} samtools mpileup -t AD -C50 -uf {1}".format(_check_file_exists,config.REF_FILE)#add 8-2-17
+                    commands += "{0} samtools mpileup -t AD -C50 -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
+                    commands2 += "{0} samtools mpileup -t AD -C50 -uf {1} {2}/aligned-sorted.{3}.bam {2}/aligned-sorted.{4}.bam {2}/aligned-sorted.{5}.bam".format(_check_file_exists,config.REF_FILE,self.output_dir,child_id,mom_id,dad_id)
                         
-                    for k,v in filesDict:#add 8-2-17
-                        commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, v)#add 8-2-17
+                    # for k,v in filesDict:#add 8-2-17
+                    #     commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, v)#add 8-2-17
+                    #     commands2 += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, v)#add 8-2-17
                     ############################################################################
 
                     # commands += "samtools mpileup -t AD -uf {0}".format(config.REF_FILE)#comment out 7-18-17
                     # _check_file_exists = self._skip_step_check(**{"check":completed_mpileup,"file-to-copy":input_file_vcf,"size":{"gt":True,"fs":"18M"}})#comment out 8-2-17
                     # commands += "{0} samtools mpileup -t AD -uf {1}".format(_check_file_exists,config.REF_FILE)#comment out 8-2-17
                     # for j,b_id_multi_key in enumerate(_used_blinded_ids):#comment out 8-2-17
-                    #     commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)#comment out 8-2-17
+                        # commands += " {0}/aligned-sorted.{1}.bam".format(self.output_dir, b_id_multi_key)#comment out 8-2-17
                 ##############################################################################
-                commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz && echo \"mpileup for {1} finished.\" > {2}\n".format(self.output_dir,self.childs_blinded_id,completed_mpileup)
+                commands += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz && echo \"mpileup for {1} finished.\" > {2}\n\t".format(self.output_dir,self.childs_blinded_id,completed_mpileup)
+                commands2 += " | bcftools call -mv -Oz > {0}/{1}.vcf.gz && echo \"mpileup for {1} finished.\" > {2}\n\t".format(self.output_dir,self.childs_blinded_id,completed_mpileup)
 
                 # input_file_vcf = "{0}/{1}.vcf.gz".format(self.output_dir,self.childs_blinded_id)#comment out 7-18-17
                 # output_file_filtered_vcf = "{0}/{1}-filtered.vcf".format(self.output_dir,self.childs_blinded_id)#comment out 7-18-17
@@ -438,19 +465,23 @@ class Trio:
                 #added pipe to bcftools view command
                 _check_file_exists = self._skip_step_check(**{"check":completed_filtered_vcf, "file-to-copy": output_file_filtered_vcf,"size":{"gt":True,"fs":"15M"}})#add 7-18-17
                 # commands += "bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {0} | bcftools view -m2 -M2 -v snps > {1}\n".format(input_file_vcf, output_file_filtered_vcf)#comment out 7-18-17
-                commands += "{0} bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {1} | bcftools view -m2 -M2 -v snps > {2} && echo \"{3}'s vcf file has been filtered.\" > {4}\n\n".format(_check_file_exists,input_file_vcf,output_file_filtered_vcf,self.childs_blinded_id,completed_filtered_vcf)
+                commands += "{0} bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {1} | bcftools view -m2 -M2 -v snps > {2} && echo \"{3}'s vcf file has been filtered.\" > {4}\n\t\n\t".format(_check_file_exists,input_file_vcf,output_file_filtered_vcf,self.childs_blinded_id,completed_filtered_vcf)
+                commands2 += "{0} bcftools filter -g3 -G10 -e'AN<5 || %QUAL<10 || %MAX(AD[1])<=3 || %MAX(AD[1])/%MAX(DP)<=0.144' {1} | bcftools view -m2 -M2 -v snps > {2} && echo \"{3}'s vcf file has been filtered.\" > {4}\n\t\n\t".format(_check_file_exists,input_file_vcf,output_file_filtered_vcf,self.childs_blinded_id,completed_filtered_vcf)
                 # commands += "bcftools view -m2 -M2 -v snps {0} > {1}\n".format(tmp_filtered_vcf, output_file_filtered_vcf)
                 # commands += "rm {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
-                commands += "test -e {0}/{1}.vcf.gz && rm {0}/{1}.vcf.gz\n".format(self.output_dir,self.childs_blinded_id)
+                commands += "test -e {0}/{1}.vcf.gz && rm {0}/{1}.vcf.gz\n\t".format(self.output_dir,self.childs_blinded_id)
+                commands2 += "test -e {0}/{1}.vcf.gz && rm {0}/{1}.vcf.gz\n\t".format(self.output_dir,self.childs_blinded_id)
 
 
                 ####
                 # 3-30-17
                 # add dynamic setting of module
-                commands += "module load {0}\n".format(_plink)
+                commands += "module load {0}\n\t".format(_plink)
+                commands2 += "module load {0}\n\t".format(_plink)
                 ####
                 output_file_plink = "{0}/{1}.plink".format(self.output_dir,self.childs_blinded_id)
-                commands += "plink --allow-extra-chr --vcf {0} --make-bed --out {1}\n".format(output_file_filtered_vcf,output_file_plink)
+                commands += "plink --allow-extra-chr --vcf {0} --make-bed --out {1}\n\t".format(output_file_filtered_vcf,output_file_plink)
+                commands2 += "plink --allow-extra-chr --vcf {0} --make-bed --out {1}\n\t".format(output_file_filtered_vcf,output_file_plink)
 
                 ##############
                 #4-7-2017
@@ -458,24 +489,36 @@ class Trio:
                 ########
                 fam_file_fixer = "update_fam.py"
                 plink_fam_file = "{0}.plink.fam".format(self.childs_blinded_id)
-                commands += "cp {0} {1}\ncd {1}\n./{0} {2}\nrm {0}\ncd ..\n".format(fam_file_fixer,self.output_dir,plink_fam_file)
+                commands += "cp {0} {1}\n\tcd {1}\n\t./{0} {2}\n\trm {0}\n\tcd ..\n\t".format(fam_file_fixer,self.output_dir,plink_fam_file)
+                commands2 += "cp {0} {1}\n\tcd {1}\n\t./{0} {2}\n\trm {0}\n\tcd ..\n\t".format(fam_file_fixer,self.output_dir,plink_fam_file)
+
                 tmp_fam_file = "{0}/tmp_fam.txt".format(self.output_dir)
-                commands += "cp {0} {1}/{2}\n".format(tmp_fam_file,self.output_dir,plink_fam_file)
+                commands += "cp {0} {1}/{2}\n\t".format(tmp_fam_file,self.output_dir,plink_fam_file)
+                commands2 += "cp {0} {1}/{2}\n\t".format(tmp_fam_file,self.output_dir,plink_fam_file)
                 # comment out echoing of .fam file fixing 4-7-17
                 # commands += "echo \"{1} {1} {1}-01 {1}-02 0 -9\n{1} {1}-01 0 0 2 -9\n{1} {1}-02 0 0 1 -9\" > {0}/{1}.plink.fam\n".format(self.output_dir,self.childs_blinded_id)
 
                 ####
                 # 3-30-17
                 # add dynamic setting of module
-                commands += "module load {0}\n".format(_king)
+                commands += "module load {0}\n\t".format(_king)
+                commands2 += "module load {0}\n\t".format(_king)
                 ####
                 output_file_king = "{0}/{1}.king".format(self.output_dir,self.childs_blinded_id)
-                commands += "king -b {0}.bed --kinship --prefix {1}\n".format(output_file_plink,output_file_king)
-                commands += "#cleanup directory for space management\nrm {0}/*plink*\nrm {0}/*bam\nrm {0}/*.bai\nrm {0}/*.vcf.gz\nrm {0}/*TMP*\nrm {0}/*kingX*\n".format(self.output_dir)         
+                commands += "king -b {0}.bed --kinship --prefix {1}\n\t".format(output_file_plink,output_file_king)
+                commands2 += "king -b {0}.bed --kinship --prefix {1}\n\t".format(output_file_plink,output_file_king)
+
+                commands += "#cleanup directory for space management\n\trm {0}/*plink*\n\trm {0}/*bam\n\trm {0}/*.bai\n\trm {0}/*.vcf.gz\n\trm {0}/*TMP*\n\trm {0}/*kingX*\n\t".format(self.output_dir)
+                commands2 += "#cleanup directory for space management\n\trm {0}/*plink*\n\trm {0}/*bam\n\trm {0}/*.bai\n\trm {0}/*.vcf.gz\n\trm {0}/*TMP*\n\trm {0}/*kingX*\n\t".format(self.output_dir)         
                 
                 output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,self.childs_blinded_id)
                 # commands += "echo \"complete\" > {0}\nkill %1".format(output_job_finshed)#7-13-17 comment out for test line 335
-                commands += "echo \"complete\" > {0}\necho \"{1}\" >> {2}\nkill %1".format(output_job_finshed,self.childs_blinded_id,path_to_validated_trios_txt_file)
+                commands += "echo \"complete\" > {0}\n\techo \"{1}\" >> {2}\n\t".format(output_job_finshed,self.childs_blinded_id,path_to_validated_trios_txt_file)
+                commands2 += "echo \"complete\" > {0}\n\techo \"{1}\" >> {2}\n\t".format(output_job_finshed,self.childs_blinded_id,path_to_validated_trios_txt_file)
+                
+
+                wrap_case_dict = {"id":blinded_id,"finished-file":output_file_finshed,"c-1":commands,"c-2":commands2}
+                commands = self._case_wrap(**wrap_case_dict)
             ####
             #5-2-17
             #add job name of loni job for killing

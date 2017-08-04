@@ -42,7 +42,7 @@ echo "$jid" > loniJobId.txt
 # echo "$(tac loniJobId.txt | egrep -m 1 .)" > loniJobId.txt
 echo "Last parameter to be used to get loni job-id: $9" >> out.txt
 
-python main.py
+python main.py &
 
 # last=$(cat query_output.dat | awk '{if($1 ~ /-02/){print substr($1,0,7)}}' > last.txt && echo $(tac last.txt | egrep -m 1 .)"_output/"$(tac last.txt | egrep -m 1 .)".king.kin")
 last=$(echo $(tac $2/triosStructure.txt | egrep -m 1 .)"_output/"$(tac $2/triosStructure.txt | egrep -m 1 .)".king.kin")
@@ -103,33 +103,10 @@ case $scenario in
 	# https://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
 	# timeout 2m bash -c -- 'while true; do echo "hello world"; sleep 3; done' (local working example)
 	#this is case 1, but rewritten with a timeout command
-	#commented out portion doesnt work because of scope of variables
 	3)
-	# actual=$(awk 'BEGIN{print "0"}')
-	# if test -n $expecting
-	# then
-	# 	# timeout 1d bash -c -- 'while ( test -n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting -eq $actual ) )
-	# 	timeout 1d bash -c -- 'jid=$(bjobs | grep  $(expr ".* 1.4" : '"'"'.* \(.*\)'"'"') | awk '"'"'{print $1}'"'"' | tac | egrep '"-"'m 1 .);
-	# 	actual=$(awk '"'"'BEGIN{print "0"}'"'"');
-	# 	expecting=$( cat triosLength.txt | awk '"'"'{print $1}'"'"')
-	# 	while ( test '"-"'n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting '"-"'eq $actual ) )
-	# 	do 
-	# 		if test '"-"'z $(find '"-"'type f '"-"'name "*trio-validation-complete.txt" | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-	# 		then
-	# 			actual=$(awk '"'"'BEGIN{print "0"}'"'"')
-	# 		else
-	# 			actual=$(wc '"-"'l $(find '"-"'type f '"-"'name "*trio-validation-complete.txt") | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-	# 		fi
-	# 		echo "expect: $expecting" > test.txt
-	# 		if test $actual '"-"'eq $expecting
-	# 		then 
-	# 			break
-	# 		else 
-	# 			sleep 180
-	# 		fi
-	# 	done'
-	# fi
-	if test -n $expecting; then timeout 36h bash -c -- 'jid=$(bjobs | grep  $(expr ".* 1.4" : '"'"'.* \(.*\)'"'"') | awk '"'"'{print $1}'"'"' | tac | egrep '"-"'m 1 .);
+	while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" )
+	do 
+		if test -n $expecting; then timeout 36h bash -c -- 'jid=$(bjobs | grep  $(expr ".* 1.4" : '"'"'.* \(.*\)'"'"') | awk '"'"'{print $1}'"'"' | tac | egrep '"-"'m 1 .);
 actual=$(awk '"'"'BEGIN{print "0"}'"'"');
 expecting=$( cat triosLength.txt | awk '"'"'{print $1}'"'"')
 while ( test '"-"'n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting '"-"'eq $actual ) )
@@ -148,30 +125,10 @@ else
 sleep 180
 fi
 done'
-	fi
+		fi
+	done
 	;;
 esac
-
-# if test -n $expecting; then timeout 1d bash -c -- 'jid=$(bjobs | grep  $(expr ".* 1.4" : '"'"'.* \(.*\)'"'"') | awk '"'"'{print $1}'"'"' | tac | egrep '"-"'m 1 .);
-# actual=$(awk '"'"'BEGIN{print "0"}'"'"');
-# expecting=$( cat triosLength.txt | awk '"'"'{print $1}'"'"')
-# while ( test '"-"'n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting '"-"'eq $actual ) )
-# do
-# if test '"-"'z $(find '"-"'type f '"-"'name "*trio-validation-complete.txt" | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-# then
-# actual=$(awk '"'"'BEGIN{print "0"}'"'"')
-# else
-# actual=$(wc '"-"'l $(find '"-"'type f '"-"'name "*trio-validation-complete.txt") | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-# fi
-# test '"-"'e jobStatus.txt && echo "expecting[$expecting] vs actual[$actual]" >> jobStatus.txt || echo "expecting[$expecting] vs actual[$actual]" > jobStatus.txt;
-# if test $actual '"-"'eq $expecting
-# then
-# break
-# else
-# sleep 180
-# fi
-# done'
-# fi
 
 # expecting=$(wc -l triosToVerify.txt | awk '{print $1}')
 # actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
