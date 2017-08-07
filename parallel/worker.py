@@ -268,7 +268,7 @@ class Trio:
                                                        
                             if "file-to-copy" in kwargs.keys():
                                 _ret += "&& test -e $({0} $(basename {1}) -print | egrep -m 1 . ) ".format(_find_command,kwargs['file-to-copy'])
-                                _ret += "&& possibleUseableFileDirectory=$(dirname $({0} $(basename {1} -print | egrep -m 1 . ))) && test -e $possibleUseableFileDirectory/{2} ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
+                                _ret += "&& possibleUseableFileDirectory=$(dirname \"$({0} \"$(basename {1} -print | egrep -m 1 . )\")\") && test -e \"$possibleUseableFileDirectory/{2}\" ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
                                 _ret += "&& existingFile=$possibleUseableFileDirectory/{0} && cp $existingFile {0} ||".format(kwargs['file-to-copy'])
                             else:
                                 _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && ".format(_find_command,kwargs['check'])
@@ -278,7 +278,7 @@ class Trio:
                             if "file-to-copy" in kwargs.keys():
                                 # _ret += "&& existingFile=$({0} $(basename {1}) -print | egrep -m 1 . ) && ( test -n $existingFile && test -s $existingFile) && cp $existingFile {1} ||".format(_find_command,kwargs['file-to-copy'])
                                 _ret += "&& test -e $({0} $(basename {1}) -print | egrep -m 1 . ) ".format(_find_command,kwargs['file-to-copy'])
-                                _ret += "&& possibleUseableFileDirectory=$(dirname $({0} $(basename {1} -print | egrep -m 1 . ))) && test -e $possibleUseableFileDirectory/{2} ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
+                                _ret += "&& possibleUseableFileDirectory=$(dirname \"$({0} \"$(basename {1} -print | egrep -m 1 . )\")\") && test -e \"$possibleUseableFileDirectory/{2}\" ".format(_find_command,kwargs['file-to-copy'],kwargs['check'])
                                 _ret += "&& existingFile=$possibleUseableFileDirectory/{0} && cp $existingFile {0} ||".format(kwargs['file-to-copy'])
                             else:
                                 _ret += "cp $existingFile {0} ||".format(kwargs['check'])
@@ -372,7 +372,7 @@ class Trio:
             _check_file_exists = self._skip_step_check(**{"check":output_path_sort_index,"file-to-copy":output_path_sort})#add 7-18-17
             _if_file_exists = self._skip_step_check(**{"check":output_file_finshed, "file-to-copy":output_path_sort_index})
             # commands += "samtools sort -o {0} {1}\n".format(output_path_sort,output_path_bam)#comment out 7-18-17
-            commands += "{0} {1} samtools sort -o {2} {3}\n\t".format(_check_file_exists,_if_file_exists,output_path_sam,output_path_sort,output_path_bam)#comment out 7-18-17
+            commands += "{0} {1} samtools sort -o {2} {3}\n\t".format(_check_file_exists,_if_file_exists,output_path_sort,output_path_bam)#comment out 7-18-17
             #7-18-17
             #add file exist check for file from next step, if it exists, skip this step
             # commands += "samtools index {0}\n".format(output_path_sort)#comment out 7-18-17
@@ -410,15 +410,15 @@ class Trio:
                         else:
                             commands += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,b_id_multi_key)
                             commands2 += "&& test -e \"{0}/{1}-done.txt\"); do sleep 180; done;\n\t".format(self.output_dir,b_id_multi_key)
-                            _rename_multi_key_python_script = "multiKeyBlindedIdFileFileRename.py"
-                            commands += "cp multiKeyBlindedIdFileFileRename.py {0}\n\t".format(self.output_dir)
+                            _rename_multi_key_python_script = "multiKeyBlindedIdFileRename.py"
+                            commands += "cp {0} {1}\n\t".format(_rename_multi_key_python_script,self.output_dir)
                             commands += "cd {0}\n\t".format(self.output_dir)
-                            commands += "./multiKeyBlindedIdFileFileRename.py\n\t"
+                            commands += "./{0}\n\t".format(_rename_multi_key_python_script)
                             commands += "bsub < renameBam.sh\n\t"
                             commands += "cd ..\n\t"
-                            commands2 += "cp multiKeyBlindedIdFileFileRename.py {0}\n\t".format(self.output_dir)
+                            commands2 += "cp {0} {1}\n\t".format(_rename_multi_key_python_script,self.output_dir)
                             commands2 += "cd {0}\n\t".format(self.output_dir)
-                            commands2 += "./multiKeyBlindedIdFileFileRename.py\n\t"
+                            commands2 += "./{0}\n\t".format(_rename_multi_key_python_script)
                             commands2 += "bsub < renameBam.sh\n\t"
                             commands2 += "cd ..\n\t"
                 ############################################################################
@@ -508,8 +508,8 @@ class Trio:
                 commands += "king -b {0}.bed --kinship --prefix {1}\n\t".format(output_file_plink,output_file_king)
                 commands2 += "king -b {0}.bed --kinship --prefix {1}\n\t".format(output_file_plink,output_file_king)
 
-                commands += "#cleanup directory for space management\n\trm {0}/*plink*\n\trm {0}/*bam\n\trm {0}/*.bai\n\trm {0}/*.vcf.gz\n\trm {0}/*TMP*\n\trm {0}/*kingX*\n\t".format(self.output_dir)
-                commands2 += "#cleanup directory for space management\n\trm {0}/*plink*\n\trm {0}/*bam\n\trm {0}/*.bai\n\trm {0}/*.vcf.gz\n\trm {0}/*TMP*\n\trm {0}/*kingX*\n\t".format(self.output_dir)         
+                commands += "#cleanup directory for space management\n\ttest -s {0} && rm {1}/*plink*\n\trm {1}/*bam\n\trm {1}/*.bai\n\ttest -s {1}/tmp.txt && rm {1}/*.vcf.gz\n\trm {1}/*TMP*\n\trm {1}/*kingX*\n\t".format(tmp_fam_file,self.output_dir)         
+                commands2 += "#cleanup directory for space management\n\ttest -s {0} && rm {1}/*plink*\n\trm {1}/*bam\n\trm {1}/*.bai\n\ttest -s {1}/tmp.txt && rm {1}/*.vcf.gz\n\trm {1}/*TMP*\n\trm {1}/*kingX*\n\t".format(tmp_fam_file,self.output_dir)         
                 
                 output_job_finshed = "{0}/{1}-trio-validation-complete.txt".format(self.output_dir,self.childs_blinded_id)
                 # commands += "echo \"complete\" > {0}\nkill %1".format(output_job_finshed)#7-13-17 comment out for test line 335

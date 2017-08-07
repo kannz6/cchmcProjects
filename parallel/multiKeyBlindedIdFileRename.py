@@ -30,6 +30,7 @@ def lsfJobWrapper(w,M,n,R):
 directoryFileNames = getFileNames( os.getcwd() )
 listOfBamFileNames = filter( (lambda x : re.match( r'.*aligned-sorted.*bam$', x) ), directoryFileNames )
 with open("renameBam.sh", "w+") as renameBam:
+    #stopped here 8-4-17 need to handle the
     [ filesDict.update({x.split(".")[1][0:7]:x.split(".")[1]+":"+x}) if x.split(".")[1].count("-") == 2  else filesDict.update({x.split(".")[1][0:10]:x.split(".")[1]+":"+x}) for x in listOfBamFileNames if ( len(x.split(".")[1]) == 9 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:7]) ) or ( len(x.split(".")[1]) == 12 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:10]))]
     # print("directoryFileNames: {0}\nlistOfBamFileNames: {1}\nfilesDict: {2}".format(directoryFileNames,listOfBamFileNames,filesDict))
     script = lsfJobWrapper("01:00","2000","1",("ptile=%s"%("1")))
