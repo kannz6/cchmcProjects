@@ -2,12 +2,13 @@
 import os
 import re
 import subprocess
+import sys
 
-#################################################################################
-#8-2-17
-doneFileNames = [];
-curretDirectoryFiles = [];
-filesDict = {};
+from os import path
+
+bamFiles = set()
+currentDirectoryFiles = []; doneFileNames = [];
+
 def joinPaths ( rt, fname ):
     filepath = os.path.join( rt, fname )
     doneFileNames.append( fname )  # Add it to the list.
@@ -20,22 +21,24 @@ def getFileNames( directory ):
     it yields a 3-tuple (dirpath, dirnames, filenames).
     """
     # Walk the tree.
-    [ ([joinPaths(root, f) for f in files],[ curretDirectoryFiles.append(d) for d in directories]) for root, directories, files in os.walk( directory ) ]
+    [ ([joinPaths(root, f) for f in files],[ currentDirectoryFiles.append(d) for d in directories]) for root, directories, files in os.walk( directory ) ]
 
     return doneFileNames  # Self-explanatory.
 
 def lsfJobWrapper(w,M,n,R):
     return "#!/bin/bash\n#BSUB -W %s\n#BSUB -M %s\n#BSUB -n %s\n#BSUB -R \"span[%s]\"\n\n"%(w,M,n,R)
 
+script = lsfJobWrapper("01:00","2000","1",("ptile=%s"%("1")))
 directoryFileNames = getFileNames( os.getcwd() )
 listOfBamFileNames = filter( (lambda x : re.match( r'.*aligned-sorted.*bam$', x) ), directoryFileNames )
-with open("renameBam.sh", "w+") as renameBam:
-    #stopped here 8-4-17 need to handle the
-    [ filesDict.update({x.split(".")[1][0:7]:x.split(".")[1]+":"+x}) if x.split(".")[1].count("-") == 2  else filesDict.update({x.split(".")[1][0:10]:x.split(".")[1]+":"+x}) for x in listOfBamFileNames if ( len(x.split(".")[1]) == 9 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:7]) ) or ( len(x.split(".")[1]) == 12 and os.path.getsize(x) > filesDict.get(x.split(".")[1][0:10]))]
-    # print("directoryFileNames: {0}\nlistOfBamFileNames: {1}\nfilesDict: {2}".format(directoryFileNames,listOfBamFileNames,filesDict))
-    script = lsfJobWrapper("01:00","2000","1",("ptile=%s"%("1")))
-    renameBam.write(script)
-    # [ renameBam.write("mv {0} {1}\n".format(str(v.split(":")[1]) ,"aligned-sorted.{0}-test.bam".format(x))) for x,v in filesDict if ( len(x) == 9 and v.split(":")[0].count("-") == 2 ) or ( len(x) == 12 and v.split(":")[0].count("-") == 3 ) ]
-    [ renameBam.write("mv {0} {1}\n".format(str(v.split(":")[1]) ,"aligned-sorted.{0}.bam".format(x))) for x,v in filesDict.iteritems() ]
-    renameBam.write("\n\nexit\n")
 
+with open("handleMultiKeyBams.sh", "w+") as handleMultiKeyBams:
+    handleMultiKeyBams.write(script)
+    handleMultiKeyBams.write("#list of bam files: {0}\n\n".format(listOfBamFileNames))
+
+    for x in listOfBamFileNames:
+        subDir = [ "{0}/{1}/{2}".format(os.getcwd(),i,x) for i in currentDirectoryFiles if os.path.isfile("{0}/{1}/{2}".format(os.getcwd(),i,x)) ]
+        bamFiles.add(max(subDir,key=os.path.getsize))
+
+    [ handleMultiKeyBams.write("mv {0}* {1}\n".format(bamFile,os.getcwd())) for bamFile in bamFiles ]
+    handleMultiKeyBams.write("\necho \"Finished moving bam files!\" > {0}\n\nexit\n".format("completed-handleMultiKeyBams.txt"))

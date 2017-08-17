@@ -37,7 +37,7 @@ dir="$(expr $(basename $2) : '.*-[0-9]\(.*\)')"
 #echo "dir try regex: $dir" >> out.txt
 # echo "jobid w/ regex: $jobid" >> out.txt
 # jid=$(bjobs | grep  $(expr ".* $9" : '.* \(.*\)') | awk '{print $1}')
-jid=$(bjobs | grep  $(expr ".* 1.4" : '.* \(.*\)') | awk '{print $1}' | tac | egrep -m 1 .)
+jid=$(bjobs | grep  $(expr ".* $9" : '.* \(.*\)') | awk '{print $1}' | tac | egrep -m 1 .)
 echo "$jid" > loniJobId.txt
 # echo "$(tac loniJobId.txt | egrep -m 1 .)" > loniJobId.txt
 echo "Last parameter to be used to get loni job-id: $9" >> out.txt
@@ -50,8 +50,13 @@ echo "$last" >> out.txt
 # while ( ! ( test -e $last ) ); do sleep 180; done;#7-13-17, commented out to test line 52
 # while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;#comment out 7-25-17
 #testing this loni job exit 7-25-17
-( test -e "triosLength.txt") && expecting=$( cat triosLength.txt | awk '{print $1}') || [ $( cat triosToVerify.txt | egrep -m 1 .) == "%" ] && scenario=3 || scenario=1
+while ( ! test -e triosLength.txt )
+do
+	sleep 10
+done
 
+( test -e "triosLength.txt") && expecting=$( cat triosLength.txt | awk '{print $1}') || [ $( cat triosToVerify.txt | egrep -m 1 .) == "%" ] && scenario=1 || scenario=1
+# ( test -e "triosLength.txt") && expecting=$( cat triosLength.txt | awk '{print $1}') || [ $( cat triosToVerify.txt | egrep -m 1 .) == "%" ] && scenario=3 || scenario=1
 echo "$scenario" > scenario.txt
 echo "expecting: $expecting trios to be validated" >> scenario.txt
 
@@ -60,29 +65,71 @@ echo "expecting: $expecting trios to be validated" >> scenario.txt
 case $scenario in
 	1)
 	actual=$(awk 'BEGIN{print "0"}')
-	if test -n $expecting
+	errors=0
+	if test -n "$expecting"
 	then
-		while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" && ! ( test $expecting -eq $actual ) )
+		while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" && ! ( test $expecting -eq $actual ) && ( test $errors -eq 0 ) )
 		do 
 
-			if test -z $(find -type f -name "*trio-validation-complete.txt" | tac | egrep -m 1 . | awk '{print $1}')
+			if test -z "$(find -type f -name "*trio-validation-complete.txt" | tac | egrep -m 1 . | awk '{print $1}')"
 			then
 				actual=$(awk 'BEGIN{print "0"}') 
 			else
 				actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
 			fi
 
-			if test $actual -eq $expecting
-			then 
+			sleep 9
+			
+			test -e jobStatus.txt && echo "expecting[$expecting] vs actual[$actual]" >> jobStatus.txt || echo "expecting[$expecting] vs actual[$actual]" > jobStatus.txt;
+			
+			if test "$actual" -eq "$expecting"
+			then
+				errors=0
+				kinSink=$2"-kinship"
+				inputSink=$2"-inputs"
+				test -d $kinSink && ( mkdir $kinSink && cp 1-*/*.kin $kinSink ) || cp 1-*/*.kin $kinSink
+				test -d $inputSink && ( mkdir $inputSink && cp lsf/in* $inputSink ) || cp lsf*/in* $inputSink
+
+				mv $kinSink ../../kinshipFiles/
+				mv $inputSink ../../inputFiles/
+
+				bsub < ../../../scripts/kinFileParse.sh
+				sleep 36
 				break
-			else 
+			elif test -n "$(find -type f -name "*log" | tac | egrep -m 1 . )"
+				then
+					echo "Exiting because log file found!" > error_report.txt
+					errors=1
+					errorReport="Exiting because plink.log file was found! Run 'find -type f -name \"*log\" | tac | egrep -m 1 . )' to locate file."
+					break
+			elif test $(echo "$(bjobs | grep "$(echo $jid | awk '{print substr($1,4,3)}')" | awk '{print $1}')" > runningJobs.txt && wc -l runningJobs.txt | tac |awk '{print $1}') -eq 1
+				then
+					bkill $jid
+					errors=1
+					errorReport="Only the main lsf job was running. Check both lsf/output* for information, and check email for any issues found!"
+					break
+			else
 				sleep 180
 			fi
 		done
 	else
-		while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) )
+		while ( ( ! ( test -e "$last" ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) )
 	 	do 
-	 		sleep 180
+			if test -n "$(find -type f -name "*log" | tac | egrep -m 1 . )"
+				then
+					echo "Exiting because log file found!" > error_report.txt
+					errors=1
+					errorReport="Exiting because plink.log file was found! Run 'find -type f -name \"*log\" | tac | egrep -m 1 . )' to locate file."
+					break
+			elif test $(echo "$(bjobs | grep "$(echo $jid | awk '{print substr($1,4,3)}')" | awk '{print $1}')" > runningJobs.txt && wc -l runningJobs.txt | tac |awk '{print $1}') -eq 1
+				then
+					bkill $jid
+					errors=1
+					errorReport="Only the main lsf job was running. Check both lsf/output* for information, and check email for any issues found!"
+					break
+			else
+				sleep 180
+			fi
 		done
 	fi
 	;;
@@ -104,32 +151,40 @@ case $scenario in
 	# timeout 2m bash -c -- 'while true; do echo "hello world"; sleep 3; done' (local working example)
 	#this is case 1, but rewritten with a timeout command
 	3)
-	while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" )
-	do 
-		if test -n $expecting; then timeout 36h bash -c -- 'jid=$(bjobs | grep  $(expr ".* 1.4" : '"'"'.* \(.*\)'"'"') | awk '"'"'{print $1}'"'"' | tac | egrep '"-"'m 1 .);
-actual=$(awk '"'"'BEGIN{print "0"}'"'"');
-expecting=$( cat triosLength.txt | awk '"'"'{print $1}'"'"')
-while ( test '"-"'n "$(bjobs | grep $jid | awk '"'"'{print $1}'"'"')" && ! ( test $expecting '"-"'eq $actual ) )
-do
-if test '"-"'z $(find '"-"'type f '"-"'name "*trio-validation-complete.txt" | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-then
-actual=$(awk '"'"'BEGIN{print "0"}'"'"')
-else
-actual=$(wc '"-"'l $(find '"-"'type f '"-"'name "*trio-validation-complete.txt") | tac | egrep '"-"'m 1 . | awk '"'"'{print $1}'"'"')
-fi
-test '"-"'e jobStatus.txt && echo "expecting[$expecting] vs actual[$actual]" >> jobStatus.txt || echo "expecting[$expecting] vs actual[$actual]" > jobStatus.txt;
-if test $actual '"-"'eq $expecting
-then
-break
-else
-sleep 180
-fi
-done'
-		fi
-	done
+	actual=$(awk 'BEGIN{print "0"}')
+	if test -n $expecting
+	then
+		while ( test -n "$(bjobs | grep $jid | awk '{print $1}')" && ! ( test $expecting -eq $actual ) )
+		do 
+
+			if test -z $(find -type f -name "*trio-validation-complete.txt" | tac | egrep -m 1 . | awk '{print $1}')
+			then
+				actual=$(awk 'BEGIN{print "0"}') 
+			else
+				actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
+			fi
+
+			if test $actual -eq $expecting
+			then 
+				break
+			else
+				if test -n $(find -type f -name "*log" | tac | egrep -m 1 . )
+				then
+					echo "Exiting because log file found!" > error_report.txt
+					break
+				else
+					sleep 180
+				fi
+			fi
+		done
+	else
+		while ( ( ! ( test -e $last ) ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) )
+	 	do 
+	 		sleep 180
+		done
+	fi
 	;;
 esac
 
-# expecting=$(wc -l triosToVerify.txt | awk '{print $1}')
-# actual=$(wc -l $(find -type f -name "*trio-validation-complete.txt") | tac | egrep -m 1 . | awk '{print $1}')
+test -z "$errors" && ( echo "Finished grabTrio-dir script!" > finishedJobResult.txt ) || ( echo "Finished grabTrio-dir script with $errors errors" > finishedJobResult.txt && test -n "$errorReport" && ( echo "" >> finishedJobResult.txt && echo "Info: $errorReport" >> finishedJobResult.txt) )
 # while ( ( test -n "$(find -type f -name "*.bam" | cat | egrep -m 1 .)" ) && ( test -n "$(bjobs | grep $jid | awk '{print $1}')" ) ); do sleep 180; done;

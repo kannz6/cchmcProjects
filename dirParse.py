@@ -372,3 +372,14 @@ class dirParse:
 	def printGenderDict( self ):
 		for k,v in self.sampleGenderCheckDict.items():
 			print "[{0}]: {1}".format(k,v)
+
+	def writeBlindedIdsToDoneFile( self, **kwargs ):
+		self.allChildBlindIds.sort()
+		if kwargs:
+			if "o" in kwargs.keys():
+				with open("{0}/done.txt".format(kwargs['o']), "w+") as validatedTriosTracker:
+					[ validatedTriosTracker.write("{0}\n".format(_id[0:7])) for _id in self.allChildBlindIds ]
+		else:
+			with open("done.txt", "w+") as validatedTriosTracker:
+				[ validatedTriosTracker.write("{0}\n".format(_id[0:7])) for _id in self.allChildBlindIds ]
+

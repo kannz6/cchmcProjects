@@ -5,6 +5,8 @@ import os
 import pickle
 import sys
 
+from os import path
+
 sys.path.insert(0, config.LSF_PATH)
 import LSF
 
@@ -14,6 +16,7 @@ if __name__ == "__main__":
 
     print "Loading fastq.gz file paths from postgres..."
     # load both the fastq.gz paths and the blinded ids
+    _max_node_count = 200
     ids_and_paths = database.get_trio_file_paths()
 
     print "collecting all ids..."
@@ -58,8 +61,25 @@ if __name__ == "__main__":
     # get the ids and file paths for the known trios.
     trios = [filter(lambda x: x[0] in (ID,ID+'-01',ID+'-02'),ids_and_paths) for ID in trio_children]
 
+    timeOutSetting = open("timeOutSetter.txt", "w+")
+    if len(trios) > _max_node_count:
+        timeOutSetting.write("{0}h".format(str(24)))
+    else:
+        if len(trios) <= 3:
+            timeOutSetting.write("{0}h".format(str(9)))
+        elif len(trios) >= 4 and len(trios) < 10:
+            timeOutSetting.write("{0}h".format(str(18)))
+        else:
+            timeOutSetting.write("{0}h".format(str(27)))
+
+    timeOutSetting.close()
+
+    triosLengthWriter = open("triosLength.txt", "w+")
+    triosLengthWriter.write(str(len(trios)))
+    triosLengthWriter.close()
+
     triosUsedChecker = open("triosStructure.txt", "w+")
-    triosUsedChecker.write(str(trios))
+    # triosUsedChecker.write(str(trios))
 
     # print trios
     # print len(trios)
@@ -76,18 +96,15 @@ if __name__ == "__main__":
     except Exception as _no_loni_file_found:
         pass
 
-    _max_node_count = 70
     print "Running cluster job..."
     if len(trios) > _max_node_count:
             _node_count = 3
-            triosUsedChecker.write("\n\ninside if len(trios) > 70".format(len(trios)))
+            triosUsedChecker.write("\n\ninside if len(trios) > 200".format(len(trios)))
             _loops = math.ceil(len(trios)/_node_count + 1); x = 0; y = _node_count
             _count = 0
             n = 0
+
             triosUsedChecker.write("\n\n[lsf_jobs]\n")
-            
-            with open("triosLength.txt", "w+") as triosLengthWriter:
-                triosLengthWriter.write(str(len(trios)))
 
             while _count != _loops:
                 if _count == 0:
@@ -156,8 +173,14 @@ if __name__ == "__main__":
             triosUsedChecker.write("\n\ninside else\n\n{0}\n\n{1}".format(len(trios),trios[len(trios)-1][0][0]))
         triosUsedChecker.close()
 
-        with open("triosLength.txt", "w+") as triosLengthWriter:
-            triosLengthWriter.write(str(len(trios)))
+        # timeOutSetting = open("timeOutSetter.txt", "w+")
+        # if len(trios) <= 3:
+        #     timeOutSetting.write("{0}h".format(str(9)))
+        # elif len(trios) >= 4 and len(trios) < 10:
+        #     timeOutSetting.write("{0}h".format(str(18)))
+        # else:
+        #     timeOutSetting.write("{0}h".format(str(27)))
+        # timeOutSetting.close()
 
         # sys.exit("largest list: {0}".format(max(trios,key=len)))
         trios = [pickle.dumps(trio) for trio in trios]#moved here 5-25-17
